@@ -8,14 +8,14 @@ import { updateCamPos, updateCamZoom } from "../utils/cam_utils";
 export default function initTitle(k: KAPLAYCtx) {
     k.scene('title', () => {
 
-        const background = k.add([
+        const gameArea = k.add([
             k.rect(k.width(), k.height()),
             k.area(),
             k.scale(2),
             k.anchor('center'),
             k.pos(k.center()),
         ])
-        updateCamPos(k, background.pos);
+        updateCamPos(k, gameArea.pos);
         updateCamZoom(k);
 
 
@@ -36,7 +36,7 @@ export default function initTitle(k: KAPLAYCtx) {
             updateCamZoom(k);
 
             // Center camera on the background
-            updateCamPos(k, background.pos);
+            updateCamPos(k, gameArea.pos);
         });
     });
 }

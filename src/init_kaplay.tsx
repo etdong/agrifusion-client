@@ -1,7 +1,8 @@
 import makeKaplayCtx from "./kaplay_context"
+import initGame from "./scenes/game"
 import initTitle from "./scenes/title"
 
-export default async function initGame() {
+export default async function initKaplay() {
 	const k = makeKaplayCtx()
 
     k.setLayers(['bg', 'game', 'fg'], 'game')
@@ -11,6 +12,7 @@ export default async function initGame() {
 	
     // initialize scenes
     initTitle(k)
+    initGame(k)
 
-	k.go('title')
+	k.go('game')
 }
