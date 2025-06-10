@@ -17,3 +17,8 @@ export const CropSize = {
     LARGE: 30,
     XLARGE: 35
 } as const;
+
+export type Crop = {
+    type: (typeof CropType)[keyof typeof CropType];
+    size: (typeof CropSize)[keyof typeof CropSize];
+};

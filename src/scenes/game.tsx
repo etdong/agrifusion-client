@@ -1,9 +1,8 @@
 import { Vec2, type GameObj, type KAPLAYCtx } from "kaplay";
 import { getRelativeMousePos } from "../utils/cam_utils";
 import spawnCrop from "../utils/crop_utils";
-import { CropSize, CropType } from "../entities/crop";
+import { CropSize, CropType, type Crop } from "../entities/crop";
 import drawPlayer from "../entities/player";
-
 import socket from "../utils/socket";
 
 const GRID_SIZE = 72;
@@ -13,11 +12,7 @@ const MAP_SIZE = 50
 const GameGrid: { [key: number]: { [key: number]: GameObj | null } } = Array.from({ length: MAP_SIZE }, () =>
     Array.from({ length: MAP_SIZE }, () => null))
 
-const ClaimGrid: { [key: number]: { [key: number]: GameObj | null } } = Array.from({ length: MAP_SIZE }, () =>
-    Array.from({ length: MAP_SIZE }, () => null))
-
 export default function initGame(k: KAPLAYCtx) {
-
     k.scene('game', () => {
         k.add([
             k.rect(GRID_SIZE * MAP_SIZE, GRID_SIZE * MAP_SIZE, { fill: false }),
@@ -28,65 +23,15 @@ export default function initGame(k: KAPLAYCtx) {
 
         const player = drawPlayer(k, k.center())
 
-        k.onKeyPress('r', () => {
-            const playerGridX = snapToGrid(k, player.pos).x / GRID_SIZE;
-            const playerGridY = snapToGrid(k, player.pos).y / GRID_SIZE;
-            if (!player.placed) {
-                const fence = k.add([
-                    k.rect(GRID_SIZE * 3, GRID_SIZE * 3, { fill: false }),
-                    k.pos(snapToGrid(k, player.pos).sub(GRID_SIZE/2)),
-                    k.anchor('topleft'),
-                    k.area(),
-                    k.outline(2, k.rgb(0, 255, 0)),
-                ])
-
-                const origin = k.add([
-                    k.circle(4),
-                    k.color(255, 0, 0),
-                    k.pos(snapToGrid(k, player.pos)),
-                    k.anchor('center'),
-                ])
-                
-                player.placed = true;
-
-                // Place down the player's farm in the game grid
-                for (let x = 0; x < 3; x++) {
-                    for (let y = 0; y < 3; y++) {
-                        const tempX = playerGridX + x;
-                        const tempY = playerGridY + y;
-                        if (GameGrid[tempX][tempY] !== null) {
-                            GameGrid[tempX][tempY].destroy()
-                        }
-                        GameGrid[tempX][tempY] = player.farm[x][y];
-                        if (player.farm[x][y] !== null) {
-                            player.farm[x][y].pos = k.vec2(
-                                (tempX * GRID_SIZE),
-                                (tempY * GRID_SIZE)
-                            );
-                            k.add(player.farm[x][y]);
-                        }
-                    }
-                }
-                
-                player.home = { x: playerGridX, y: playerGridY, fence: fence, origin: origin };
-            } else {
-                if (playerGridX === player.home.x && playerGridY === player.home.y) {
-                    player.home.fence.destroy();
-                    player.home.origin.destroy();
-                    for (let x = 0; x < 3; x++) {
-                        for (let y = 0; y < 3; y++) {
-                            const tempX = playerGridX + x;
-                            const tempY = playerGridY + y;
-                            if (GameGrid[tempX][tempY] !== null) {
-                                GameGrid[tempX][tempY].destroy()
-                            }
-                            player.farm[x][y] = GameGrid[tempX][tempY];
-                            GameGrid[tempX][tempY] = null;
-                        }
-                    }
-                }
-                player.placed = false;
+        socket.emit('GET_player', (response: any) => {
+            if (response.status === 'ok') {
+                // const playerFarm = response.data;
+                // drawPlayer(k, k.center(), playerFarm)
             }
+        })
+
+        k.onKeyPress('r', () => {
+            handleFarmPlacement(k, player);
         })
 
         for (let x = 0; x <= k.width(); x += GRID_SIZE) {
@@ -111,15 +56,6 @@ export default function initGame(k: KAPLAYCtx) {
                 'gridline'
             ]);
         }
-
-        k.add([
-            k.text('Game Scene', { size: 32 }),
-            k.color(0, 0, 0),
-            k.pos(k.center()),
-            k.anchor('center'),
-            k.area(),
-            'game-text',
-        ]);
 
         const button1 = k.add([
             k.text('Carrot', { size: 24 }),
@@ -195,15 +131,9 @@ export default function initGame(k: KAPLAYCtx) {
                 const mousePos = getRelativeMousePos(k);
                 clicked.pos = mousePos;
             }
-            
         });
 
         k.onUpdate(() => {
-            // // Update camera zoom based on screen size
-            // updateCamZoom(k);
-
-            // // Center camera on the game area
-            // updateCamPos(k, gameArea.pos);
 
             k.tween(
                 k.getCamPos(),
@@ -252,20 +182,148 @@ export default function initGame(k: KAPLAYCtx) {
     });
 }
 
+function handleFarmPlacement(k: KAPLAYCtx, player: GameObj) {
+    const playerGridPos = getGridCoords(k, player.pos);
+    if (!player.placed) {
+        const placingText = k.add([
+            k.text('Placing farm...'),
+            k.pos(player.pos),
+            k.anchor('center'),
+            k.layer('ui'),
+            k.z(1000),
+            k.color(0, 0, 0),
+        ])
+        const placingTextBackground = k.add([
+            k.rect(placingText.width + 32, placingText.height + 32),
+            k.pos(placingText.pos.sub(k.vec2(5, 5))),
+            k.anchor('center'),
+            k.layer('ui'),
+            k.color(255, 255, 255),
+            k.outline(2, k.rgb(0, 0, 0)),
+        ])
+        player.freeze = true;
+        socket.emit('GET player/farm', { id: player.playerId }, (response: any) => {
+            if (response.status === 'ok') {
+                console.log(`Player ${player.playerId} farm data received`);
+                const playerFarm = response.data
+                for (let x = 0; x < 3; x++) {
+                    for (let y = 0; y < 3; y++) {
+                        const cropData = playerFarm[x][y];
+                        if (cropData) {
+                            const tempX = playerGridPos.x + x;
+                            const tempY = playerGridPos.y + y;
+                            player.farm[x][y] = spawnCrop(k, k.vec2(tempX * GRID_SIZE, tempY * GRID_SIZE), cropData.size, cropData.type);
+                            GameGrid[playerGridPos.x + x][playerGridPos.y + y] = player.farm[x][y];
+                        } else {
+                            player.farm[x][y] = null;
+                        }
+                    }
+                }
+                const fence = k.add([
+                    k.rect(GRID_SIZE * 3, GRID_SIZE * 3, { fill: false }),
+                    k.pos(snapToGrid(k, player.pos).sub(GRID_SIZE/2)),
+                    k.anchor('topleft'),
+                    k.area(),
+                    k.outline(2, k.rgb(0, 255, 0)),
+                ])
+
+                const origin = k.add([
+                    k.circle(4),
+                    k.color(255, 0, 0),
+                    k.pos(snapToGrid(k, player.pos)),
+                    k.anchor('center'),
+                ])
+
+                player.placed = true;
+                player.home = { x: playerGridPos.x, y: playerGridPos.y, fence: fence, origin: origin };
+            } else {
+                console.error('Failed to place farm:', response.data);
+            }
+            player.freeze = false;
+            placingText.destroy();
+            placingTextBackground.destroy()
+        })
+    } else {
+        if (playerGridPos.x === player.home.x && playerGridPos.y === player.home.y) {
+            const PlayerFarmPackage: { 
+                [key: number]: { [key: number]: Crop | null } 
+            } = Array.from({ length: 3 }, () =>
+                Array.from({ length: 3 }, () => null))
+
+            for (let x = 0; x < 3; x++) {
+                for (let y = 0; y < 3; y++) {
+                    const tempX = playerGridPos.x + x;
+                    const tempY = playerGridPos.y + y;
+                    const crop = GameGrid[tempX][tempY];
+                    PlayerFarmPackage[x][y] = crop ? {
+                        type: crop.type,
+                        size: crop.size
+                    } : null;
+                }
+            }
+
+            const savingText = k.add([
+                k.text('Saving farm...'),
+                k.pos(player.pos),
+                k.anchor('center'),
+                k.color(0, 0, 0),
+                k.layer('ui'),
+                k.z(1000),
+            ])
+            const savingTextBackground = k.add([
+                k.rect(savingText.width + 32, savingText.height + 32),
+                k.pos(savingText.pos.sub(k.vec2(5, 5))),
+                k.anchor('center'),
+                k.layer('ui'),
+                k.color(255, 255, 255),
+                k.outline(2, k.rgb(0, 0, 0)),
+            ])
+
+            player.freeze = true;
+
+            socket.emit('POST player/farm', {
+                id: player.playerId,
+                farm: PlayerFarmPackage
+            }, (response: { status: string; data: string; }) => {
+                if (response.status === 'ok') {
+                    console.log(`Player ${player.playerId} farm saved successfully`);
+                    player.home.fence?.destroy();
+                    player.home.origin?.destroy();
+                    for (let x = 0; x < 3; x++) {
+                        for (let y = 0; y < 3; y++) {
+                            const tempX = playerGridPos.x + x;
+                            const tempY = playerGridPos.y + y;
+                            if (GameGrid[tempX][tempY] !== null) {
+                                GameGrid[tempX][tempY].destroy()
+                            }
+                            player.farm[x][y] = GameGrid[tempX][tempY];
+                            GameGrid[tempX][tempY] = null;
+                        }
+                    }
+                    player.placed = false;
+                } else {
+                    console.error('Failed to save farm:', response.data);
+                }
+                player.freeze = false;
+                savingText.destroy();
+                savingTextBackground.destroy();
+            })
+        }
+    }
+}
+
 function handleMerge(k: KAPLAYCtx, clicked: GameObj, oldPos: Vec2) {
     // Keep track of old and new grid positions
-    const oldGridX = oldPos.x / GRID_SIZE;
-    const oldGridY = oldPos.y / GRID_SIZE;
+    const oldGridPos = getGridCoords(k, oldPos);
     const snappedPos = snapToGrid(k, clicked.pos);
-    const gridX = snappedPos.x / GRID_SIZE;
-    const gridY = snappedPos.y / GRID_SIZE;
+    const newGridPos = getGridCoords(k, clicked.pos);
 
     // Check if the dropped crop is in a new grid position and if the new position is occupied
-    if ((oldGridX !== gridX || oldGridY !== gridY) && GameGrid[gridX][gridY] !== null) {
-        const coll = GameGrid[gridX][gridY];
+    if ((oldGridPos.x !== newGridPos.x || oldGridPos.y !== newGridPos.y) && GameGrid[newGridPos.x][newGridPos.y] !== null) {
+        const coll = GameGrid[newGridPos.x][newGridPos.y];
 
         // Is the colliding object a crop of the same type and size?
-        if (coll.tags.includes('crop') 
+        if (coll && coll.tags.includes('crop') 
         && coll.type === clicked.type
         && coll.size === clicked.size
         && clicked.size < CropSize.XLARGE) { // Prevent merging if already at max size
@@ -316,34 +374,30 @@ function handleMerge(k: KAPLAYCtx, clicked: GameObj, oldPos: Vec2) {
                     // Only merge up to 3 crops if there are less than 5
                     for (let i = 0; i < 3; i++) {
                         const crop = mergeGroup[i];
-                        crop.destroy();
-                        const tempSnappedPos = snapToGrid(k, crop.pos);
-                        const tempGridX = tempSnappedPos.x / GRID_SIZE;
-                        const tempGridY = tempSnappedPos.y / GRID_SIZE;
-                        GameGrid[tempGridX][tempGridY] = null; // Reset old position
+                        if (crop) {
+                            crop.destroy();
+                            const tempGridPos = getGridCoords(k, crop.pos);
+                            GameGrid[tempGridPos.x][tempGridPos.y] = null; // Reset old position
+                        }
                     }
                     // Spawn one new crop of the next size
-                    GameGrid[gridX][gridY] = spawnCrop(k, snappedPos, newSize, clicked.type);
-                    GameGrid[oldGridX][oldGridY] = null; // Reset old position
+                    GameGrid[newGridPos.x][newGridPos.y] = spawnCrop(k, snappedPos, newSize, clicked.type);
+                    GameGrid[oldGridPos.x][oldGridPos.y] = null; // Reset old position
                     break;
                 case mergeGroup.length >= 5:
                     // Bonus merge: Merge up to 5 crops into two new crops of the next size
                     { for (let i = 0; i < 5; i++) {
                         const crop = mergeGroup[i];
                         crop.destroy();
-                        const tempSnappedPos = snapToGrid(k, crop.pos);
-                        const tempGridX = tempSnappedPos.x / GRID_SIZE;
-                        const tempGridY = tempSnappedPos.y / GRID_SIZE;
-                        GameGrid[tempGridX][tempGridY] = null; // Reset old position
+                        const tempGridPos = getGridCoords(k, crop.pos);
+                        GameGrid[tempGridPos.x][tempGridPos.y] = null; // Reset old position
                     }
 
-                    GameGrid[gridX][gridY] = spawnCrop(k, snappedPos, newSize, clicked.type);
+                    GameGrid[newGridPos.x][newGridPos.y] = spawnCrop(k, snappedPos, newSize, clicked.type);
                     // Spawn the second crop at nearest position to the first
-                    const newPos = k.vec2(mergeGroup[2].pos.x, mergeGroup[2].pos.y);
-                    const newPosX = newPos.x / GRID_SIZE;
-                    const newPosY = newPos.y / GRID_SIZE;
-                    GameGrid[newPosX][newPosY] = spawnCrop(k, newPos, newSize, clicked.type);
-                    GameGrid[oldGridX][oldGridY] = null;
+                    const bonusCropGridPos = getGridCoords(k, mergeGroup[2].pos);
+                    GameGrid[bonusCropGridPos.x][bonusCropGridPos.y] = spawnCrop(k, snapToGrid(k, mergeGroup[2].pos), newSize, clicked.type);
+                    GameGrid[oldGridPos.x][oldGridPos.y] = null;
 
                     break; 
                 }
@@ -352,9 +406,9 @@ function handleMerge(k: KAPLAYCtx, clicked: GameObj, oldPos: Vec2) {
     }
 
     // If the grid square is empty, move the clicked crop to the new position
-    if (GameGrid[gridX][gridY] === null) {
-        GameGrid[oldGridX][oldGridY] = null; // Set old position to unoccupied
-        GameGrid[gridX][gridY] = clicked; // Mark new position as occupied
+    if (GameGrid[newGridPos.x][newGridPos.y] === null) {
+        GameGrid[oldGridPos.x][oldGridPos.y] = null; // Set old position to unoccupied
+        GameGrid[newGridPos.x][newGridPos.y] = clicked; // Mark new position as occupied
         clicked.pos = snappedPos;
     } else {
         // If the grid square is already occupied, reset the position
@@ -369,4 +423,11 @@ function snapToGrid(k: KAPLAYCtx, pos: { x: number, y: number }) {
         Math.round(pos.x / GRID_SIZE) * GRID_SIZE,
         Math.round(pos.y / GRID_SIZE) * GRID_SIZE
     );
+}
+
+function getGridCoords(k: KAPLAYCtx, pos: { x: number, y: number }) {
+    return {
+        x: snapToGrid(k, pos).x / GRID_SIZE,
+        y: snapToGrid(k, pos).y / GRID_SIZE
+    };
 }
