@@ -4,6 +4,8 @@ import spawnCrop from "../utils/crop_utils";
 import { CropSize, CropType } from "../entities/crop";
 import drawPlayer from "../entities/player";
 
+import socket from "../utils/socket";
+
 const GRID_SIZE = 72;
 
 const MAP_SIZE = 50
@@ -15,6 +17,7 @@ const ClaimGrid: { [key: number]: { [key: number]: GameObj | null } } = Array.fr
     Array.from({ length: MAP_SIZE }, () => null))
 
 export default function initGame(k: KAPLAYCtx) {
+
     k.scene('game', () => {
         k.add([
             k.rect(GRID_SIZE * MAP_SIZE, GRID_SIZE * MAP_SIZE, { fill: false }),
