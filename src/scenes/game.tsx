@@ -173,7 +173,13 @@ export default function initGame(k: KAPLAYCtx) {
 
         k.onMouseRelease("left", () => {
             if (clicked) {
-                handleMerge(k, clicked, oldPos);
+                if (clicked.pos.x < 0 || clicked.pos.x >  GRID_SIZE * MAP_SIZE 
+                    || clicked.pos.y < 0 || clicked.pos.y > GRID_SIZE * MAP_SIZE) {
+                    // If the clicked crop is outside the game area, reset its position
+                    clicked.pos = oldPos;
+                } else {
+                    handleMerge(k, clicked, oldPos);
+                }
                 clicked.z = 1; // Reset z-index
                 clicked = null;
             }
