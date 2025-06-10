@@ -1,6 +1,5 @@
-import type { KAPLAYCtx, Vec2 } from "kaplay";
-import { getRelativeMousePos } from "./cam_utils";
-import { CropSize, CropType } from "../entities/crop";
+import { type KAPLAYCtx, type Vec2 } from "kaplay";
+import { CropType } from "../entities/crop";
 
 /**
  * Spawns a crop at the specified position with the given size and type.
