@@ -4,6 +4,7 @@ import spawnCrop from "../utils/crop_utils";
 import { CropSize, CropType, type Crop } from "../entities/crop";
 import drawPlayer from "../entities/player";
 import socket from "../utils/socket";
+import drawFriend from "../entities/friend";
 
 const GRID_SIZE = 72;
 
@@ -11,6 +12,8 @@ const MAP_SIZE = 50
 
 const GameGrid: { [key: number]: { [key: number]: GameObj | null } } = Array.from({ length: MAP_SIZE }, () =>
     Array.from({ length: MAP_SIZE }, () => null))
+
+const playerList: { [key: string]: GameObj } = {};
 
 export default function initGame(k: KAPLAYCtx) {
     k.scene('game', () => {
@@ -23,11 +26,29 @@ export default function initGame(k: KAPLAYCtx) {
 
         const player = drawPlayer(k, k.center())
 
-        socket.emit('GET_player', (response: any) => {
+        socket.emit('GET player/data', {playerId: player.playerId}, (response: { status: string; }) => {
             if (response.status === 'ok') {
                 // const playerFarm = response.data;
                 // drawPlayer(k, k.center(), playerFarm)
             }
+        })
+
+        socket.on('UPDATE player/pos', (data) => {
+            for (const i in data) {
+                const p = data[i];  
+                if (p.playerId !== '-1' && p.playerId !== player.playerId) {
+                    if (!playerList[p.playerId]) {
+                    const friend = drawFriend(k, k.vec2(p.pos.x, p.pos.y));
+                    friend.playerId = p.playerId;
+                    playerList[p.playerId] = friend;
+                    } else {
+                        const friend = playerList[p.playerId];
+                        friend.pos = k.vec2(p.pos.x, p.pos.y);
+                    }
+                }
+                
+            }
+            
         })
 
         k.onKeyPress('r', () => {
@@ -134,7 +155,6 @@ export default function initGame(k: KAPLAYCtx) {
         });
 
         k.onUpdate(() => {
-
             k.tween(
                 k.getCamPos(),
                 player.pos,
@@ -179,6 +199,14 @@ export default function initGame(k: KAPLAYCtx) {
                 ]);
             }
         });
+
+        setInterval(() => {
+            socket.emit('POST player/pos', { id: player.playerId, pos: player.pos }, (response: { status: string; data: string; }) => {
+                if (response.status !== 'ok') {
+                    console.error('Failed to update player position:', response.data);
+                }
+            })
+        }, 1000/10);
     });
 }
 
@@ -186,7 +214,9 @@ function handleFarmPlacement(k: KAPLAYCtx, player: GameObj) {
     const playerGridPos = getGridCoords(k, player.pos);
     if (!player.placed) {
         const placingText = k.add([
-            k.text('Placing farm...'),
+            k.text('Placing farm...', {
+                    font: 'moot-jungle',
+                }),
             k.pos(player.pos),
             k.anchor('center'),
             k.layer('ui'),
@@ -202,7 +232,8 @@ function handleFarmPlacement(k: KAPLAYCtx, player: GameObj) {
             k.outline(2, k.rgb(0, 0, 0)),
         ])
         player.freeze = true;
-        socket.emit('GET player/farm', { id: player.playerId }, (response: any) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        socket.emit('GET player/farm', { id: player.playerId }, (response: { status: string; data: any; }) => {
             if (response.status === 'ok') {
                 console.log(`Player ${player.playerId} farm data received`);
                 const playerFarm = response.data
@@ -263,7 +294,9 @@ function handleFarmPlacement(k: KAPLAYCtx, player: GameObj) {
             }
 
             const savingText = k.add([
-                k.text('Saving farm...'),
+                k.text('Saving farm...', {
+                    font: 'moot-jungle',
+                }),
                 k.pos(player.pos),
                 k.anchor('center'),
                 k.color(0, 0, 0),

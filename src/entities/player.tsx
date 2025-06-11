@@ -15,7 +15,7 @@ export default function drawPlayer(k: KAPLAYCtx,
         k.area(),
         k.anchor('center'),
         {
-            playerId: 0,
+            playerId: Math.random(),
             name: 'Player',
             farm: farm,
             placed: false,
