@@ -19,6 +19,8 @@ export const CropSize = {
 } as const;
 
 export type Crop = {
+    id: number,
+    pos: { x: number; y: number },
     type: (typeof CropType)[keyof typeof CropType];
     size: (typeof CropSize)[keyof typeof CropSize];
 };

@@ -1,7 +1,7 @@
 import { Vec2, type GameObj, type KAPLAYCtx } from "kaplay";
 import { getRelativeMousePos } from "../utils/cam_utils";
 import spawnCrop from "../utils/crop_utils";
-import { CropSize, CropType } from "../entities/crop";
+import { CropSize, CropType, type Crop } from "../entities/crop";
 import drawPlayer from "../entities/player";
 import socket from "../utils/socket";
 import drawFriend from "../entities/friend";
@@ -107,7 +107,17 @@ export default function initGame(k: KAPLAYCtx) {
         })
 
         button2.onClick(() => {
-            spawnCrop(k, snapToGrid(k, k.vec2(200, 200)), CropSize.MEDIUM, CropType.CABBAGE);
+            const newCrop: Crop = {
+                id: Math.floor(Math.random() * 1000), // Random ID for the crop
+                pos: getGridCoords(k, k.vec2(200, 200)),
+                type: CropType.CABBAGE,
+                size: CropSize.MEDIUM
+            }
+            socket.emit('POST game/crop/spawn', { newCrop }, (response: { status: string, data: Crop }) => {
+                if (response.status === 'ok') {
+                    console.log(`Crop spawned ${response.data}`);
+                }
+            })
         })
 
         button3.onClick(() => {
@@ -218,7 +228,7 @@ export default function initGame(k: KAPLAYCtx) {
                         if (currentSquare !== null) {
                             if (currentSquare.type !== cropData.type || currentSquare.size !== cropData.size) {
                                 GameGrid[x][y]!.destroy();
-                                GameGrid[x][y] = spawnCrop(k, k.vec2(x * GRID_SIZE + GRID_SIZE / 2, y * GRID_SIZE + GRID_SIZE / 2), cropData.size, cropData.type);
+                                GameGrid[x][y] = spawnCrop(k, k.vec2(x * GRID_SIZE, y * GRID_SIZE), cropData.size, cropData.type);
                             }
                         } else {
                             GameGrid[x][y] = spawnCrop(k, k.vec2(x * GRID_SIZE, y * GRID_SIZE), cropData.size, cropData.type);
@@ -312,17 +322,6 @@ function handleFarmPlacement(k: KAPLAYCtx, player: GameObj) {
                 console.log(`Player ${player.playerId} farm saved successfully`);
                 player.home.fence?.destroy();
                 player.home.origin?.destroy();
-                for (let x = 0; x < 3; x++) {
-                    for (let y = 0; y < 3; y++) {
-                        const tempX = playerGridPos.x + x;
-                        const tempY = playerGridPos.y + y;
-                        if (GameGrid[tempX][tempY] !== null) {
-                            GameGrid[tempX][tempY].destroy()
-                        }
-                        player.farm[x][y] = GameGrid[tempX][tempY];
-                        GameGrid[tempX][tempY] = null;
-                    }
-                }
                 player.placed = false;
             } else {
                 console.error('Failed to save farm:', response.data);
@@ -337,105 +336,18 @@ function handleFarmPlacement(k: KAPLAYCtx, player: GameObj) {
 function handleMerge(k: KAPLAYCtx, clicked: GameObj, oldPos: Vec2) {
     // Keep track of old and new grid positions
     const oldGridPos = getGridCoords(k, oldPos);
-    const snappedPos = snapToGrid(k, clicked.pos);
     const newGridPos = getGridCoords(k, clicked.pos);
+    clicked.pos = k.vec2(newGridPos.x * GRID_SIZE, newGridPos.y * GRID_SIZE);
 
-    // Check if the dropped crop is in a new grid position and if the new position is occupied
-    if ((oldGridPos.x !== newGridPos.x || oldGridPos.y !== newGridPos.y) && GameGrid[newGridPos.x][newGridPos.y] !== null) {
-        const coll = GameGrid[newGridPos.x][newGridPos.y];
-
-        // Is the colliding object a crop of the same type and size?
-        if (coll && coll.tags.includes('crop') 
-        && coll.type === clicked.type
-        && coll.size === clicked.size
-        && clicked.size < CropSize.XLARGE) { // Prevent merging if already at max size
-            // Merge logic: DFS the game grid to find all connected crops of the same type and size
-            const mergeGroup = [clicked, coll];
-            const stack = [coll];
-            const visited = new Set();
-            visited.add(coll.id);
-            visited.add(clicked.id);
-
-            while (stack.length > 0 && mergeGroup.length < 5) { 
-                const current = stack.pop();
-                const currentGridX = current?.pos.x / GRID_SIZE;
-                const currentGridY = current?.pos.y / GRID_SIZE;
-                
-                // Check all 4 directions for connected crops
-                const directions = [
-                    { x: 1, y: 0 }, // Right
-                    { x: -1, y: 0 }, // Left
-                    { x: 0, y: 1 }, // Down
-                    { x: 0, y: -1 } // Up
-                ];
-                
-                for (const dir of directions) {
-                    const neighborX = currentGridX + dir.x;
-                    const neighborY = currentGridY + dir.y;
-                    
-                    if (GameGrid[neighborX] && GameGrid[neighborY]) {
-                        const neighbor = GameGrid[neighborX][neighborY];
-                        if (neighbor && neighbor.tags.includes('crop') 
-                            && neighbor.type === clicked.type 
-                            && neighbor.size === clicked.size 
-                            && !visited.has(neighbor.id)) {
-                            mergeGroup.push(neighbor);
-                            stack.push(neighbor);
-                            visited.add(neighbor.id);
-                        }
-                    }
-                }
-            }
-
-            const newSize = clicked.size + 5;
-            switch (true) {
-                case mergeGroup.length < 3:
-                    // Not enough crops to merge, do nothing
-                    break;
-                case mergeGroup.length < 5:
-                    // Only merge up to 3 crops if there are less than 5
-                    for (let i = 0; i < 3; i++) {
-                        const crop = mergeGroup[i];
-                        if (crop) {
-                            crop.destroy();
-                            const tempGridPos = getGridCoords(k, crop.pos);
-                            GameGrid[tempGridPos.x][tempGridPos.y] = null; // Reset old position
-                        }
-                    }
-                    // Spawn one new crop of the next size
-                    GameGrid[newGridPos.x][newGridPos.y] = spawnCrop(k, snappedPos, newSize, clicked.type);
-                    GameGrid[oldGridPos.x][oldGridPos.y] = null; // Reset old position
-                    break;
-                case mergeGroup.length >= 5:
-                    // Bonus merge: Merge up to 5 crops into two new crops of the next size
-                    { for (let i = 0; i < 5; i++) {
-                        const crop = mergeGroup[i];
-                        crop.destroy();
-                        const tempGridPos = getGridCoords(k, crop.pos);
-                        GameGrid[tempGridPos.x][tempGridPos.y] = null; // Reset old position
-                    }
-
-                    GameGrid[newGridPos.x][newGridPos.y] = spawnCrop(k, snappedPos, newSize, clicked.type);
-                    // Spawn the second crop at nearest position to the first
-                    const bonusCropGridPos = getGridCoords(k, mergeGroup[2].pos);
-                    GameGrid[bonusCropGridPos.x][bonusCropGridPos.y] = spawnCrop(k, snapToGrid(k, mergeGroup[2].pos), newSize, clicked.type);
-                    GameGrid[oldGridPos.x][oldGridPos.y] = null;
-
-                    break; 
-                }
-            }
+    socket.emit('POST game/crop/move', { oldPos: oldGridPos, newPos: newGridPos }, (response: { status: string, data: string }) => {
+        if (response.status === 'ok') {
+            console.log(response.data);
+        } else {
+            console.error('Failed to move crop:', response.data);
+            // Reset the position of the clicked crop if the move fails
+            clicked.pos = oldPos;
         }
-    }
-
-    // If the grid square is empty, move the clicked crop to the new position
-    if (GameGrid[newGridPos.x][newGridPos.y] === null) {
-        GameGrid[oldGridPos.x][oldGridPos.y] = null; // Set old position to unoccupied
-        GameGrid[newGridPos.x][newGridPos.y] = clicked; // Mark new position as occupied
-        clicked.pos = snappedPos;
-    } else {
-        // If the grid square is already occupied, reset the position
-        clicked.pos = oldPos;
-    }
+    })
         
 }
 
