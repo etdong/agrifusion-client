@@ -7,7 +7,7 @@ function App() {
 
   return (
     <div>
-      <p>{"$" + coins}</p>
+      <div id='coins'>{"$" + coins}</div>
     </div>
   )
 }

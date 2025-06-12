@@ -1,7 +1,7 @@
 import { Vec2, type GameObj, type KAPLAYCtx } from "kaplay";
 import { getRelativeMousePos } from "../utils/cam_utils";
 import spawnCrop from "../utils/crop_utils";
-import { CropSize, CropType, type Crop } from "../entities/crop";
+import { CropSize, CropType } from "../entities/crop";
 import drawPlayer from "../entities/player";
 import socket from "../utils/socket";
 import drawFriend from "../entities/friend";
@@ -46,7 +46,6 @@ export default function initGame(k: KAPLAYCtx) {
                         friend.pos = k.vec2(p.pos.x, p.pos.y);
                     }
                 }
-                
             }
             
         })
@@ -201,12 +200,38 @@ export default function initGame(k: KAPLAYCtx) {
         });
 
         setInterval(() => {
-            socket.emit('POST player/pos', { id: player.playerId, pos: player.pos }, (response: { status: string; data: string; }) => {
+            socket.emit('POST player/pos', { pos: player.pos }, (response: { status: string; data: string; }) => {
                 if (response.status !== 'ok') {
                     console.error('Failed to update player position:', response.data);
                 }
             })
         }, 1000/10);
+
+        socket.on('UPDATE game/grid', (data) => {
+            const gridData = data.grid;
+            for (let x = 0; x < MAP_SIZE; x++) {
+                for (let y = 0; y < MAP_SIZE; y++) {
+                    // If cropData is null, it means the grid square is empty
+                    const currentSquare = GameGrid[x][y]
+                    if (gridData[`${x},${y}`] && gridData[`${x},${y}`] !== undefined) {
+                        const cropData = gridData[`${x},${y}`].crop
+                        if (currentSquare !== null) {
+                            if (currentSquare.type !== cropData.type || currentSquare.size !== cropData.size) {
+                                GameGrid[x][y]!.destroy();
+                                GameGrid[x][y] = spawnCrop(k, k.vec2(x * GRID_SIZE + GRID_SIZE / 2, y * GRID_SIZE + GRID_SIZE / 2), cropData.size, cropData.type);
+                            }
+                        } else {
+                            GameGrid[x][y] = spawnCrop(k, k.vec2(x * GRID_SIZE, y * GRID_SIZE), cropData.size, cropData.type);
+                        }
+                    } else {
+                        if (GameGrid[x][y] !== null) {
+                            GameGrid[x][y]!.destroy();
+                            GameGrid[x][y] = null;
+                        }
+                    }
+                }
+            }
+        })
     });
 }
 
@@ -233,23 +258,9 @@ function handleFarmPlacement(k: KAPLAYCtx, player: GameObj) {
         ])
         player.freeze = true;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        socket.emit('GET player/farm', { id: player.playerId }, (response: { status: string; data: any; }) => {
+        socket.emit('GET player/farm', (response: { status: string; data: any; }) => {
             if (response.status === 'ok') {
                 console.log(`Player ${player.playerId} farm data received`);
-                const playerFarm = response.data
-                for (let x = 0; x < 3; x++) {
-                    for (let y = 0; y < 3; y++) {
-                        const cropData = playerFarm[x][y];
-                        if (cropData) {
-                            const tempX = playerGridPos.x + x;
-                            const tempY = playerGridPos.y + y;
-                            player.farm[x][y] = spawnCrop(k, k.vec2(tempX * GRID_SIZE, tempY * GRID_SIZE), cropData.size, cropData.type);
-                            GameGrid[playerGridPos.x + x][playerGridPos.y + y] = player.farm[x][y];
-                        } else {
-                            player.farm[x][y] = null;
-                        }
-                    }
-                }
                 const fence = k.add([
                     k.rect(GRID_SIZE * 3, GRID_SIZE * 3, { fill: false }),
                     k.pos(snapToGrid(k, player.pos).sub(GRID_SIZE/2)),
@@ -275,73 +286,51 @@ function handleFarmPlacement(k: KAPLAYCtx, player: GameObj) {
             placingTextBackground.destroy()
         })
     } else {
-        if (playerGridPos.x === player.home.x && playerGridPos.y === player.home.y) {
-            const PlayerFarmPackage: { 
-                [key: number]: { [key: number]: Crop | null } 
-            } = Array.from({ length: 3 }, () =>
-                Array.from({ length: 3 }, () => null))
+        const savingText = k.add([
+            k.text('Saving farm...', {
+                font: 'moot-jungle',
+            }),
+            k.pos(player.pos),
+            k.anchor('center'),
+            k.color(0, 0, 0),
+            k.layer('ui'),
+            k.z(1000),
+        ])
+        const savingTextBackground = k.add([
+            k.rect(savingText.width + 32, savingText.height + 32),
+            k.pos(savingText.pos.sub(k.vec2(5, 5))),
+            k.anchor('center'),
+            k.layer('ui'),
+            k.color(255, 255, 255),
+            k.outline(2, k.rgb(0, 0, 0)),
+        ])
 
-            for (let x = 0; x < 3; x++) {
-                for (let y = 0; y < 3; y++) {
-                    const tempX = playerGridPos.x + x;
-                    const tempY = playerGridPos.y + y;
-                    const crop = GameGrid[tempX][tempY];
-                    PlayerFarmPackage[x][y] = crop ? {
-                        type: crop.type,
-                        size: crop.size
-                    } : null;
-                }
-            }
+        player.freeze = true;
 
-            const savingText = k.add([
-                k.text('Saving farm...', {
-                    font: 'moot-jungle',
-                }),
-                k.pos(player.pos),
-                k.anchor('center'),
-                k.color(0, 0, 0),
-                k.layer('ui'),
-                k.z(1000),
-            ])
-            const savingTextBackground = k.add([
-                k.rect(savingText.width + 32, savingText.height + 32),
-                k.pos(savingText.pos.sub(k.vec2(5, 5))),
-                k.anchor('center'),
-                k.layer('ui'),
-                k.color(255, 255, 255),
-                k.outline(2, k.rgb(0, 0, 0)),
-            ])
-
-            player.freeze = true;
-
-            socket.emit('POST player/farm', {
-                id: player.playerId,
-                farm: PlayerFarmPackage
-            }, (response: { status: string; data: string; }) => {
-                if (response.status === 'ok') {
-                    console.log(`Player ${player.playerId} farm saved successfully`);
-                    player.home.fence?.destroy();
-                    player.home.origin?.destroy();
-                    for (let x = 0; x < 3; x++) {
-                        for (let y = 0; y < 3; y++) {
-                            const tempX = playerGridPos.x + x;
-                            const tempY = playerGridPos.y + y;
-                            if (GameGrid[tempX][tempY] !== null) {
-                                GameGrid[tempX][tempY].destroy()
-                            }
-                            player.farm[x][y] = GameGrid[tempX][tempY];
-                            GameGrid[tempX][tempY] = null;
+        socket.emit('POST player/farm', (response: { status: string; data: string; }) => {
+            if (response.status === 'ok') {
+                console.log(`Player ${player.playerId} farm saved successfully`);
+                player.home.fence?.destroy();
+                player.home.origin?.destroy();
+                for (let x = 0; x < 3; x++) {
+                    for (let y = 0; y < 3; y++) {
+                        const tempX = playerGridPos.x + x;
+                        const tempY = playerGridPos.y + y;
+                        if (GameGrid[tempX][tempY] !== null) {
+                            GameGrid[tempX][tempY].destroy()
                         }
+                        player.farm[x][y] = GameGrid[tempX][tempY];
+                        GameGrid[tempX][tempY] = null;
                     }
-                    player.placed = false;
-                } else {
-                    console.error('Failed to save farm:', response.data);
                 }
-                player.freeze = false;
-                savingText.destroy();
-                savingTextBackground.destroy();
-            })
-        }
+                player.placed = false;
+            } else {
+                console.error('Failed to save farm:', response.data);
+            }
+            player.freeze = false;
+            savingText.destroy();
+            savingTextBackground.destroy();
+        })
     }
 }
 
