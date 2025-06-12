@@ -26,21 +26,35 @@ export default function initGame(k: KAPLAYCtx) {
 
         const player = drawPlayer(k, k.center())
 
-        socket.emit('GET player/data', {playerId: player.playerId}, (response: { status: string; }) => {
-            if (response.status === 'ok') {
-                // const playerFarm = response.data;
-                // drawPlayer(k, k.center(), playerFarm)
+        socket.on('UPDATE player/disconnect', (data) => {
+            const playerId = data.playerId;
+            if (playerList[playerId]) {
+                playerList[playerId].destroy();
+                delete playerList[playerId];
+                console.log(`Player ${playerId} disconnected`);
             }
         })
+
+        k.load(new Promise<void>((resolve, reject) => {
+            socket.emit('GET player/data', {playerId: player.playerId}, (response: { status: string; }) => {
+                if (response.status === 'ok') {
+                    playerList[player.playerId] = player;
+                    console.log(`Player ${player.playerId} data loaded successfully`);
+                    resolve();
+                } else {
+                    reject(new Error(`Failed to load player data: ${response.status}`));
+                }
+            })
+        }))
 
         socket.on('UPDATE player/pos', (data) => {
             for (const i in data) {
                 const p = data[i];  
                 if (p.playerId !== '-1' && p.playerId !== player.playerId) {
                     if (!playerList[p.playerId]) {
-                    const friend = drawFriend(k, k.vec2(p.pos.x, p.pos.y));
-                    friend.playerId = p.playerId;
-                    playerList[p.playerId] = friend;
+                        const friend = drawFriend(k, k.vec2(p.pos.x, p.pos.y));
+                        friend.playerId = p.playerId;
+                        playerList[p.playerId] = friend;
                     } else {
                         const friend = playerList[p.playerId];
                         friend.pos = k.vec2(p.pos.x, p.pos.y);
