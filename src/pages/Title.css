@@ -1,0 +1,44 @@
+.background {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+input {
+    font-size: 6vmin;
+    text-align: center;
+    border: none;
+    outline: 1px solid black;
+    font-family: 'moot-jungle';
+    background-color: transparent;
+    color: black;
+    transition-duration: 0.5s;
+    transition-timing-function: ease;
+}
+
+input:hover {
+    outline: 6px solid #269c36;
+    color: #269c36;
+    cursor:pointer;
+}
+
+#title {
+    font-size: 20vmin;
+    font-family: 'moot-jungle';
+    transition-duration: 0.5s;
+}
+
+@font-face {
+	font-family: 'moot-jungle';
+	src: url('fonts/moot-jungle.ttf') format('truetype');
+}

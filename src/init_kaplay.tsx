@@ -1,6 +1,5 @@
 import makeKaplayCtx from "./kaplay_context"
 import initGame from "./scenes/game"
-import initTitle from "./scenes/title"
 
 export default async function initKaplay() {
 	const k = makeKaplayCtx()
@@ -11,8 +10,7 @@ export default async function initKaplay() {
     k.loadFont('moot-jungle', './fonts/moot-jungle.ttf')
 	
     // initialize scenes
-    initTitle(k)
     initGame(k)
 
-	k.go('game')
+    k.go('game')
 }

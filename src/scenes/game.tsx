@@ -24,8 +24,6 @@ export default function initGame(k: KAPLAYCtx) {
             k.pos(-GRID_SIZE/2),
         ]);
 
-        const player = drawPlayer(k, k.center())
-
         socket.on('UPDATE player/disconnect', (data) => {
             const playerId = data.playerId;
             if (playerList[playerId]) {
@@ -35,14 +33,16 @@ export default function initGame(k: KAPLAYCtx) {
             }
         })
 
+        const player = drawPlayer(k, k.vec2(0, 0));
+
         k.load(new Promise<void>((resolve, reject) => {
-            socket.emit('GET player/data', {playerId: player.playerId}, (response: { status: string; }) => {
+            socket.emit('GET player/data', (response: { status: string; }) => {
                 if (response.status === 'ok') {
                     playerList[player.playerId] = player;
                     console.log(`Player ${player.playerId} data loaded successfully`);
                     resolve();
                 } else {
-                    reject(new Error(`Failed to load player data: ${response.status}`));
+                    reject(new Error(`Failed to load player data: ${response.data}`));
                 }
             })
         }))
