@@ -308,7 +308,7 @@ export default function initGame(k: KAPLAYCtx) {
                 const claimOrigin = claim.origin;
                 if (claimOrigin.x < 0 && claimOrigin.y < 0) {
                     const temp = playerList[claimOwner];
-                    if (temp && temp.placed) {
+                    if (temp && temp.home.fence) {
                         temp.home.fence.destroy();
                         temp.home.label.destroy();
                         temp.home.fence = null;
@@ -356,7 +356,6 @@ export default function initGame(k: KAPLAYCtx) {
 }
 
 function handleFarmPlacement(k: KAPLAYCtx, player: GameObj) {
-    const playerGridPos = getGridCoords(k, player.pos);
     if (!player.placed) {
         const placingText = k.add([
             k.text('Placing farm...', {
@@ -382,7 +381,6 @@ function handleFarmPlacement(k: KAPLAYCtx, player: GameObj) {
             if (response.status === 'ok') {
                 console.debug(`Player ${player.playerId} farm data received`);
                 player.placed = true;
-                player.home = { x: playerGridPos.x, y: playerGridPos.y };
             } else {
                 console.error('Failed to place farm:', response.data);
             }
