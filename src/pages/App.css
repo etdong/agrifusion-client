@@ -5,6 +5,8 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    font-family: 'moot-jungle';
+    color: black;
 }
 
 #coins {
@@ -13,6 +15,42 @@
     left: 6vmin;
     z-index: 1;
     font-family: 'moot-jungle';
-    font-size: 6vw;
+    font-size: 4vmax;
     color: black;
 }
+
+.btn {
+    z-index: 1;
+    font-family: 'moot-jungle';
+    color: black;
+    font-size: 4vmax;
+    border: none;
+    outline: 1px solid black;
+    background-color: white;
+    transition-duration: 0.5s;
+    transition-timing-function: ease;
+    pointer-events: all;
+}
+.btn:hover {
+    outline: 6px solid #269c36;
+    color: #269c36;
+    cursor: pointer;
+}
+
+#btn_bag {
+    position: absolute;
+    top: 2vmin;
+    right: 6vmin;
+}
+
+#bag {
+    background-color: white;
+    width: max-content;
+    font-size: 4vmax;
+    color: black;
+    outline: 2px solid black;
+    padding-left: 6vmax;
+    padding-right: 6vmax;
+    pointer-events: all;
+}
+

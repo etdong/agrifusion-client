@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import socket from '../utils/socket'
 import './App.css'
 
 function App() {
     
     const c = document.getElementById('game') as HTMLCanvasElement;
-    c.hidden = false;
     const r = document.getElementById('root') as HTMLCanvasElement;
     r.style.pointerEvents = 'none';
 
@@ -22,28 +21,67 @@ function App() {
 			});
 	}, [])
 
-    function menuComponent() {
-        if (user.loggedIn) {
-            return(
-                <div id='coins'>{"$" + coins}</div>
-            )
-        } else {
+    const [coins, setCoins] = useState(0)
+
+    const [bagOpen, setBagOpen] = useState(true)
+
+    type BagItem = { id: string; name: string; amount: number };
+    const [bagItems, setBagItems] = useState<BagItem[]>([]);
+
+    function openInventory() {
+        setBagItems([
+            {id: '1', name: 'Apple', amount: 5},
+            {id: '2', name: 'Carrot', amount: 3},
+            {id: '3', name: 'Wheat', amount: 10},
+            {id: '4', name: 'Corn', amount: 2},
+        ])
+        setBagOpen(!bagOpen);
+        c.focus();
+    }
+
+    const bag = () => {
+        return (
+            <div id='bag'>
+                <h2>Bag</h2>
+                <ul>
+                    {bagItems.map(item => (
+                        <li key={item.id}>
+                            {item.name} x{item.amount}
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        );
+    }
+
+    function gameUI() {
+        if (!user.loggedIn) {
+            c.hidden = true;
             return (
-                <h1>YOU NEED TO LOGIN TO PLAY!</h1>
+                <h1 id='login_warning'>YOU NEED TO LOGIN TO PLAY!</h1>
             )
         }
+
+        c.hidden = false;
+        return(
+            <div>
+                <div id='coins'>{"$" + coins}</div>
+                <button onClick={openInventory} className='btn' id='btn_bag'>BAG</button>
+                {bagOpen && bag()}
+            </div>
+            
+        )
     }
     
 
-    const [coins, setCoins] = useState(0)
 
     socket.on('UPDATE player/coins', (data: { coins: number }) => {
         setCoins(data.coins)
     })
 
     return (
-        <div>
-            {menuComponent()}
+        <div className='background'>
+            {gameUI()}
         </div>
     )
 }

@@ -16,6 +16,10 @@ body {
     margin: 0;
 }
 
+#game {
+    pointer-events: all;
+}
+
 @font-face {
 	font-family: 'moot-jungle';
 	src: url('fonts/moot-jungle.ttf') format('truetype');
