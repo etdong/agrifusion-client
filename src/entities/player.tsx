@@ -1,11 +1,6 @@
 import type { GameObj, KAPLAYCtx, Vec2 } from "kaplay";
 
-const PlayerFarm: { [key: number]: { [key: number]: GameObj | null } } = Array.from({ length: 3 }, () =>
-    Array.from({ length: 3 }, () => null))
-
-export default function drawPlayer(k: KAPLAYCtx, 
-    pos: Vec2, 
-    farm: { [key: number]: { [key: number]: GameObj | null } } = PlayerFarm) {
+export default function drawPlayer(k: KAPLAYCtx, pos: Vec2) {
     
     const player = k.add([
         k.circle(5),
@@ -17,12 +12,10 @@ export default function drawPlayer(k: KAPLAYCtx,
         {
             playerId: 0,
             name: 'Player',
-            farm: farm,
             placed: false,
             home: {
-                x: 0, 
-                y: 0, 
                 fence: null as GameObj | null,
+                label: null as GameObj | null,
             },
             freeze: false,
         }

@@ -1,4 +1,4 @@
-import type { KAPLAYCtx, Vec2 } from "kaplay";
+import type { GameObj, KAPLAYCtx, Vec2 } from "kaplay";
 
 export default function drawFriend(k: KAPLAYCtx, pos: Vec2) {
     
@@ -11,6 +11,11 @@ export default function drawFriend(k: KAPLAYCtx, pos: Vec2) {
         k.anchor('center'),
         {
             playerId: -1,
+            name: 'Friend',
+            home: {
+                fence: null as GameObj | null,
+                label: null as GameObj | null,
+            },
         }
     ])
 

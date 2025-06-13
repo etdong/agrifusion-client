@@ -24,33 +24,75 @@ export default function initGame(k: KAPLAYCtx) {
             k.pos(-GRID_SIZE/2),
         ]);
 
+        k.setCamPos(0, 0)
+
         socket.on('UPDATE player/disconnect', (data) => {
             const playerId = data.playerId;
-            if (playerList[playerId]) {
-                playerList[playerId].destroy();
+            const friend = playerList[playerId];
+            if (friend) {
+                friend.home.fence.destroy();
+                friend.destroy();
                 delete playerList[playerId];
-                console.log(`Player ${playerId} disconnected`);
+                console.debug(`Player ${playerId} disconnected`);
             }
         })
 
-        const player = drawPlayer(k, k.vec2(0, 0));
-
+        let player: GameObj | null = null;
+        
         k.load(new Promise<void>((resolve, reject) => {
-            socket.emit('GET player/data', (response: { status: string; }) => {
-                if (response.status === 'ok') {
-                    playerList[player.playerId] = player;
-                    console.log(`Player ${player.playerId} data loaded successfully`);
-                    resolve();
-                } else {
-                    reject(new Error(`Failed to load player data: ${response.data}`));
-                }
-            })
+            let tries = 0;
+            const checkLogin = setInterval(() => {
+                fetch(import.meta.env.VITE_SERVER_URL + "/account", { 
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'include',
+                }).then(res => res.json()).then(data => {
+                    if (data.loggedIn) {
+                        player = drawPlayer(k, k.vec2(0, 0))
+                        player.name = data.name;
+                        player.playerId = data.id;
+                        clearInterval(checkLogin);
+                        socket.emit('POST player/login', { playerId: data.id, playerName: data.name }, (response: { status: string; data: string; }) => {
+                            if (response.status === 'ok') {
+                                console.debug(`Player ${data.id} logged in as ${data.name}`);
+                                socket.emit('GET player/data', (response: { status: string, data: string }) => {
+                                    if (response.status === 'ok') {
+                                        playerList[player!.playerId] = player!;
+                                        console.debug(`Player ${player!.playerId} data loaded successfully`);
+                                        resolve();
+                                    } else {
+                                        reject(new Error(`Failed to load player data: ${response.data}`));
+                                        if (window.location.href === import.meta.env.VITE_CLIENT_URL + '/#/play') {
+                                            window.location.href = import.meta.env.VITE_CLIENT_URL
+                                        }
+                                    }
+                                })
+                            } else {
+                                reject(new Error(`Failed to log in: ${response.data}`));
+                                if (window.location.href === import.meta.env.VITE_CLIENT_URL + '/#/play') {
+                                    window.location.href = import.meta.env.VITE_CLIENT_URL
+                                }
+                            }
+                        })
+                    } else {
+                        console.debug(`Failed to get login data. Retrying... (${tries + 1}/5)`);
+                        tries++;
+                        if (tries >= 5) {
+                            clearInterval(checkLogin);
+                            reject(new Error(`Failed to get login data after 5 attempts`));
+                            if (window.location.href === import.meta.env.VITE_CLIENT_URL + '/#/play') {
+                                window.location.href = import.meta.env.VITE_CLIENT_URL
+                            }
+                        }
+                    }
+                })
+            }, 1000)
         }))
 
         socket.on('UPDATE player/pos', (data) => {
             for (const i in data) {
                 const p = data[i];  
-                if (p.playerId !== '-1' && p.playerId !== player.playerId) {
+                if (player && p.playerId !== '-1' && p.playerId !== player.playerId) {
                     if (!playerList[p.playerId]) {
                         const friend = drawFriend(k, k.vec2(p.pos.x, p.pos.y));
                         friend.playerId = p.playerId;
@@ -65,7 +107,7 @@ export default function initGame(k: KAPLAYCtx) {
         })
 
         k.onKeyPress('r', () => {
-            handleFarmPlacement(k, player);
+            if (player) handleFarmPlacement(k, player);
         })
 
         for (let x = 0; x <= k.width(); x += GRID_SIZE) {
@@ -129,15 +171,15 @@ export default function initGame(k: KAPLAYCtx) {
             }
             socket.emit('POST game/crop/spawn', { newCrop }, (response: { status: string, data: Crop }) => {
                 if (response.status === 'ok') {
-                    console.log(`Crop spawned ${response.data}`);
+                    console.debug(`Crop spawned ${response.data}`);
                 }
             })
         })
 
         button3.onClick(() => {
             // Log the current state of the game grid
-            console.log("Current Game Grid State:");
-            console.log(GameGrid);
+            console.debug("Current Game Grid State:");
+            console.debug(GameGrid);
         })
         
 
@@ -161,13 +203,12 @@ export default function initGame(k: KAPLAYCtx) {
                     // If the clicked crop is outside the game area, reset its position
                     clicked.pos = oldPos;
                 } else {
-                    handleMerge(k, clicked, oldPos);
+                    handleCropMove(k, clicked, oldPos);
                 }
                 clicked.z = 1; // Reset z-index
                 clicked = null;
             }
             k.setCamPos(k.getCamPos())
-                
         });
 
         k.onUpdate(() => {
@@ -178,6 +219,7 @@ export default function initGame(k: KAPLAYCtx) {
         });
 
         k.onUpdate(() => {
+            if (!player) return;
             k.tween(
                 k.getCamPos(),
                 player.pos,
@@ -224,15 +266,19 @@ export default function initGame(k: KAPLAYCtx) {
         });
 
         setInterval(() => {
-            socket.emit('POST player/pos', { pos: player.pos }, (response: { status: string; data: string; }) => {
-                if (response.status !== 'ok') {
-                    console.error('Failed to update player position:', response.data);
-                }
-            })
+            if (player) {
+                socket.emit('POST player/pos', { pos: player.pos }, (response: { status: string; data: string; }) => {
+                    if (response.status !== 'ok') {
+                        console.error('Failed to update player position:', response.data);
+                    }
+                })
+            }
         }, 1000/10);
+        
 
         socket.on('UPDATE game/grid', (data) => {
             const gridData = data.grid;
+            const claimData = data.claim;
             for (let x = 0; x < MAP_SIZE; x++) {
                 for (let y = 0; y < MAP_SIZE; y++) {
                     // If cropData is null, it means the grid square is empty
@@ -252,6 +298,56 @@ export default function initGame(k: KAPLAYCtx) {
                             GameGrid[x][y]!.destroy();
                             GameGrid[x][y] = null;
                         }
+                    }
+                }
+            }
+
+            for (const claimOwner in claimData) {
+                const claim = claimData[claimOwner];
+                const claimSize = claim.size;
+                const claimOrigin = claim.origin;
+                if (claimOrigin.x < 0 && claimOrigin.y < 0) {
+                    const temp = playerList[claimOwner];
+                    if (temp && temp.placed) {
+                        temp.home.fence.destroy();
+                        temp.home.label.destroy();
+                        temp.home.fence = null;
+                        temp.home.label = null;
+                    }
+                    
+                } 
+                else if (player && claimOwner === player.playerId && !player.home.fence) {
+                    player.home.fence = k.add([
+                        k.rect(GRID_SIZE * claimSize, GRID_SIZE * claimSize, { fill: false }),
+                        k.pos(claimOrigin.x * GRID_SIZE - GRID_SIZE/2, claimOrigin.y * GRID_SIZE - GRID_SIZE/2),
+                        k.anchor('topleft'),
+                        k.area(),
+                        k.outline(2, k.rgb(85, 164, 255)),
+                    ])
+                    player.home.label = k.add([
+                        k.text(claim.name, { size: 24, font: 'moot-jungle' }),
+                        k.pos(claimOrigin.x * GRID_SIZE, claimOrigin.y * GRID_SIZE - GRID_SIZE/2 - 20),
+                        k.anchor('center'),
+                        k.color(0, 0, 0),
+                        k.z(10),
+                    ])
+                } else {
+                    const friend = playerList[claimOwner];
+                    if (friend && !friend.home.fence) {
+                        friend.home.fence = k.add([
+                            k.rect(GRID_SIZE * claimSize, GRID_SIZE * claimSize, { fill: false }),
+                            k.pos(claimOrigin.x * GRID_SIZE - GRID_SIZE/2, claimOrigin.y * GRID_SIZE - GRID_SIZE/2),
+                            k.anchor('topleft'),
+                            k.area(),
+                            k.outline(2, k.rgb(91, 243, 111)),
+                        ])
+
+                        friend.home.label = k.add([
+                            k.text(claim.name, { size: 24, font: 'moot-jungle' }),
+                            k.pos(claimOrigin.x * GRID_SIZE, claimOrigin.y * GRID_SIZE - GRID_SIZE/2 - 20),
+                            k.anchor('center'),
+                            k.color(0, 0, 0),
+                        ])
                     }
                 }
             }
@@ -284,24 +380,9 @@ function handleFarmPlacement(k: KAPLAYCtx, player: GameObj) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         socket.emit('GET player/farm', (response: { status: string; data: any; }) => {
             if (response.status === 'ok') {
-                console.log(`Player ${player.playerId} farm data received`);
-                const fence = k.add([
-                    k.rect(GRID_SIZE * 3, GRID_SIZE * 3, { fill: false }),
-                    k.pos(snapToGrid(k, player.pos).sub(GRID_SIZE/2)),
-                    k.anchor('topleft'),
-                    k.area(),
-                    k.outline(2, k.rgb(0, 255, 0)),
-                ])
-
-                const origin = k.add([
-                    k.circle(4),
-                    k.color(255, 0, 0),
-                    k.pos(snapToGrid(k, player.pos)),
-                    k.anchor('center'),
-                ])
-
+                console.debug(`Player ${player.playerId} farm data received`);
                 player.placed = true;
-                player.home = { x: playerGridPos.x, y: playerGridPos.y, fence: fence, origin: origin };
+                player.home = { x: playerGridPos.x, y: playerGridPos.y };
             } else {
                 console.error('Failed to place farm:', response.data);
             }
@@ -333,9 +414,9 @@ function handleFarmPlacement(k: KAPLAYCtx, player: GameObj) {
 
         socket.emit('POST player/farm', (response: { status: string; data: string; }) => {
             if (response.status === 'ok') {
-                console.log(`Player ${player.playerId} farm saved successfully`);
+                console.debug(`Player ${player.playerId} farm saved successfully`);
                 player.home.fence?.destroy();
-                player.home.origin?.destroy();
+                player.home.label?.destroy();
                 player.placed = false;
             } else {
                 console.error('Failed to save farm:', response.data);
@@ -347,22 +428,19 @@ function handleFarmPlacement(k: KAPLAYCtx, player: GameObj) {
     }
 }
 
-function handleMerge(k: KAPLAYCtx, clicked: GameObj, oldPos: Vec2) {
+function handleCropMove(k: KAPLAYCtx, clicked: GameObj, oldPos: Vec2) {
     // Keep track of old and new grid positions
     const oldGridPos = getGridCoords(k, oldPos);
     const newGridPos = getGridCoords(k, clicked.pos);
     clicked.pos = k.vec2(newGridPos.x * GRID_SIZE, newGridPos.y * GRID_SIZE);
 
     socket.emit('POST game/crop/move', { oldPos: oldGridPos, newPos: newGridPos }, (response: { status: string, data: string }) => {
-        if (response.status === 'ok') {
-            console.log(response.data);
-        } else {
-            console.error('Failed to move crop:', response.data);
+        if (response.status !== 'ok') {
+            console.debug('Failed to move crop:', response.data);
             // Reset the position of the clicked crop if the move fails
             clicked.pos = oldPos;
         }
-    })
-        
+    })       
 }
 
 // Helper to snap a position to the grid

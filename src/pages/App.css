@@ -1,0 +1,18 @@
+.background {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+#coins {
+    position: absolute;
+    top: 2vmin;
+    left: 6vmin;
+    z-index: 1;
+    font-family: 'moot-jungle';
+    font-size: 6vw;
+    color: black;
+}

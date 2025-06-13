@@ -6,6 +6,8 @@ function App() {
     
     const c = document.getElementById('game') as HTMLCanvasElement;
     c.hidden = false;
+    const r = document.getElementById('root') as HTMLCanvasElement;
+    r.style.pointerEvents = 'none';
 
     const [user, setUser] = useState({ loggedIn: false, name: {givenName: "", familyName: ""}, id: ""});
 
@@ -22,10 +24,9 @@ function App() {
 
     function menuComponent() {
         if (user.loggedIn) {
-            setInterval(() => {
-                console.log("Sending login event to server");
-                socket.emit('login', socket.id, user.name.givenName, user.id);
-            }, 500);
+            return(
+                <div id='coins'>{"$" + coins}</div>
+            )
         } else {
             return (
                 <h1>YOU NEED TO LOGIN TO PLAY!</h1>
@@ -42,7 +43,6 @@ function App() {
 
     return (
         <div>
-            <div id='coins'>{"$" + coins}</div>
             {menuComponent()}
         </div>
     )

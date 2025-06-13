@@ -5,6 +5,7 @@ body {
 }
 
 #root {
+    position: absolute;
     width: 100vw;
     height: 100vh;
     display: flex;
@@ -13,13 +14,6 @@ body {
     z-index: 100;
     pointer-events: none;
     margin: 0;
-}
-
-#coins {
-    z-index: 1;
-    font-family: 'moot-jungle';
-    font-size: 6vw;
-    color: black;
 }
 
 @font-face {
