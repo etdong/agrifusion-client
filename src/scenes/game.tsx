@@ -1,10 +1,10 @@
 import { Vec2, type GameObj, type KAPLAYCtx } from "kaplay";
 import { getRelativeMousePos } from "../utils/cam_utils";
 import spawnCrop from "../utils/crop_utils";
-import { CropSize, CropType, type Crop } from "../entities/crop";
-import drawPlayer from "../entities/player";
+import { CropSize, CropType, type Crop } from "../components/crop";
+import drawPlayer from "../components/player";
 import socket from "../utils/socket";
-import drawFriend from "../entities/friend";
+import drawFriend from "../components/friend";
 
 const GRID_SIZE = 72;
 

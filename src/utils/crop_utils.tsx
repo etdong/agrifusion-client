@@ -1,5 +1,5 @@
 import { type KAPLAYCtx, type Vec2 } from "kaplay";
-import { CropType } from "../entities/crop";
+import { CropType } from "../components/crop";
 
 /**
  * Spawns a crop at the specified position with the given size and type.
