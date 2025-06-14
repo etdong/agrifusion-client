@@ -9,6 +9,11 @@
     color: black;
 }
 
+#login_warning {
+    font-size: 4vmax;
+    text-align: center;
+}
+
 #coins {
     position: absolute;
     top: 2vmin;

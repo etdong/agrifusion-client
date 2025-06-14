@@ -42,7 +42,7 @@ export default function initGame(k: KAPLAYCtx) {
         k.load(new Promise<void>((resolve, reject) => {
             let tries = 0;
             const checkLogin = setInterval(() => {
-                fetch(import.meta.env.VITE_SERVER_URL + "/account", { 
+                fetch(import.meta.env.VITE_SERVER_URL + "/api/user", { 
                     method: 'GET',
                     mode: 'cors',
                     credentials: 'include',
@@ -75,7 +75,7 @@ export default function initGame(k: KAPLAYCtx) {
                             }
                         })
                     } else {
-                        console.debug(`Failed to get login data. Retrying... (${tries + 1}/5)`);
+                        console.debug(`Failed to get login data: ${data.message} Retrying... (${tries + 1}/5)`);
                         tries++;
                         if (tries >= 5) {
                             clearInterval(checkLogin);

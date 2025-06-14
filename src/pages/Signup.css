@@ -14,10 +14,6 @@ form {
     align-items: center;
 }
 
-#login-form {
-    display: flex;
-}
-
 section {
     font-size: 2vmin;
     display: flex;
@@ -40,12 +36,6 @@ input {
 
 input:hover {
     outline: 6px solid #269c36;
-}
-
-#title {
-    font-size: 20vmin;
-    font-family: 'moot-jungle';
-    transition-duration: 0.5s;
 }
 
 @font-face {
