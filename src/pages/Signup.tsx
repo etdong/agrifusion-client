@@ -1,6 +1,9 @@
 import './Signup.css'
 
 export default function Signup() {
+    const c = document.getElementById('game') as HTMLCanvasElement;
+    c.style.pointerEvents = 'none';
+    c.style.display = 'none';
     const r = document.getElementById('root') as HTMLCanvasElement;
     r.style.pointerEvents = 'all';
 

@@ -49,7 +49,7 @@ export default function initGame(k: KAPLAYCtx) {
                 }).then(res => res.json()).then(data => {
                     if (data.loggedIn) {
                         player = drawPlayer(k, k.vec2(0, 0))
-                        player.name = data.name;
+                        player.name = data.username;
                         player.playerId = data.id;
                         clearInterval(checkLogin);
                         socket.emit('POST player/login', { playerId: data.id, playerName: data.name }, (response: { status: string; data: string; }) => {
