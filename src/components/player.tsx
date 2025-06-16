@@ -10,8 +10,7 @@ export default function drawPlayer(k: KAPLAYCtx, pos: Vec2) {
         k.area(),
         k.anchor('center'),
         {
-            playerId: 0,
-            name: 'Player',
+            username: '-1',
             placed: false,
             home: {
                 fence: null as GameObj | null,

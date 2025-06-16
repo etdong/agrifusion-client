@@ -27,13 +27,13 @@ export default function initGame(k: KAPLAYCtx) {
         k.setCamPos(0, 0)
 
         socket.on('UPDATE player/disconnect', (data) => {
-            const playerId = data.playerId;
-            const friend = playerList[playerId];
+            const username = data.username;
+            const friend = playerList[username];
             if (friend) {
                 friend.home.fence.destroy();
                 friend.destroy();
-                delete playerList[playerId];
-                console.debug(`Player ${playerId} disconnected`);
+                delete playerList[username];
+                console.debug(`Player ${username} disconnected`);
             }
         })
 
@@ -47,19 +47,17 @@ export default function initGame(k: KAPLAYCtx) {
                     mode: 'cors',
                     credentials: 'include',
                 }).then(res => res.json()).then(data => {
-                    console.log(data)
                     if (data.loggedIn) {
                         player = drawPlayer(k, k.vec2(0, 0))
-                        player.name = data.username;
-                        player.playerId = data.id;
+                        player.username = data.username;
                         clearInterval(checkLogin);
                         socket.emit('POST player/login', { username: data.username }, (response: { status: string; data: string; }) => {
                             if (response.status === 'ok') {
-                                console.debug(`Player ${data._id} logged in as ${data.username}`);
+                                console.debug(`Player ${data.username} logged in`);
                                 socket.emit('GET player/data', (response: { status: string, data: string }) => {
                                     if (response.status === 'ok') {
-                                        playerList[player!.name] = player!;
-                                        console.debug(`Player ${player!.name} data loaded successfully`);
+                                        playerList[player!.username] = player!;
+                                        console.debug(`Player ${player!.username} data loaded successfully`);
                                         resolve();
                                     } else {
                                         reject(new Error(`Failed to load player data: ${response.data}`));
@@ -93,13 +91,13 @@ export default function initGame(k: KAPLAYCtx) {
         socket.on('UPDATE player/pos', (data) => {
             for (const i in data) {
                 const p = data[i];  
-                if (player && p.playerId !== '-1' && p.playerId !== player.playerId) {
-                    if (!playerList[p.playerId]) {
+                if (player && p.username !== '-1' && p.username !== player.username) {
+                    if (!playerList[p.username]) {
                         const friend = drawFriend(k, k.vec2(p.pos.x, p.pos.y));
-                        friend.playerId = p.playerId;
-                        playerList[p.playerId] = friend;
+                        friend.username = p.username;
+                        playerList[p.username] = friend;
                     } else {
-                        const friend = playerList[p.playerId];
+                        const friend = playerList[p.username];
                         friend.pos = k.vec2(p.pos.x, p.pos.y);
                     }
                 }
@@ -112,7 +110,7 @@ export default function initGame(k: KAPLAYCtx) {
         })
 
         k.onKeyPress('t', () => {
-            if (player) console.log(player.playerId);
+            if (player) console.log(player.username);
         })
 
         for (let x = 0; x <= k.width(); x += GRID_SIZE) {
@@ -321,7 +319,7 @@ export default function initGame(k: KAPLAYCtx) {
                     }
                     
                 } 
-                else if (player && claimOwner === player.playerId && !player.home.fence) {
+                else if (player && claimOwner === player.username && !player.home.fence) {
                     player.home.fence = k.add([
                         k.rect(GRID_SIZE * claimSize, GRID_SIZE * claimSize, { fill: false }),
                         k.pos(claimOrigin.x * GRID_SIZE - GRID_SIZE/2, claimOrigin.y * GRID_SIZE - GRID_SIZE/2),
@@ -330,7 +328,7 @@ export default function initGame(k: KAPLAYCtx) {
                         k.outline(2, k.rgb(85, 164, 255)),
                     ])
                     player.home.label = k.add([
-                        k.text(claim.name, { size: 24, font: 'moot-jungle' }),
+                        k.text(claim.username, { size: 24, font: 'moot-jungle' }),
                         k.pos(claimOrigin.x * GRID_SIZE, claimOrigin.y * GRID_SIZE - GRID_SIZE/2 - 20),
                         k.anchor('center'),
                         k.color(0, 0, 0),
@@ -348,7 +346,7 @@ export default function initGame(k: KAPLAYCtx) {
                         ])
 
                         friend.home.label = k.add([
-                            k.text(claim.name, { size: 24, font: 'moot-jungle' }),
+                            k.text(claim.username, { size: 24, font: 'moot-jungle' }),
                             k.pos(claimOrigin.x * GRID_SIZE, claimOrigin.y * GRID_SIZE - GRID_SIZE/2 - 20),
                             k.anchor('center'),
                             k.color(0, 0, 0),
@@ -384,7 +382,7 @@ function handleFarmPlacement(k: KAPLAYCtx, player: GameObj) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         socket.emit('GET player/farm', (response: { status: string; data: any; }) => {
             if (response.status === 'ok') {
-                console.debug(`Player ${player.playerId} farm data received`);
+                console.debug(`Player ${player.username} farm data received`);
                 player.placed = true;
             } else {
                 console.error('Failed to place farm:', response.data);
@@ -417,7 +415,7 @@ function handleFarmPlacement(k: KAPLAYCtx, player: GameObj) {
 
         socket.emit('POST player/farm', (response: { status: string; data: string; }) => {
             if (response.status === 'ok') {
-                console.debug(`Player ${player.playerId} farm saved successfully`);
+                console.debug(`Player ${player.username} farm saved successfully`);
                 player.home.fence?.destroy();
                 player.home.label?.destroy();
                 player.placed = false;

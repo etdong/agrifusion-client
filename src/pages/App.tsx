@@ -27,12 +27,13 @@ function App() {
     const [bagItems, setBagItems] = useState<BagItem[]>([]);
 
     function openInventory() {
-        setBagItems([
-            {id: '1', name: 'Apple', amount: 5},
-            {id: '2', name: 'Carrot', amount: 3},
-            {id: '3', name: 'Wheat', amount: 10},
-            {id: '4', name: 'Corn', amount: 2},
-        ])
+        socket.emit('GET player/inventory', (status: string, data: { items: BagItem[] }) => {
+            if (status !== 'ok') {
+                console.error('Failed to fetch inventory:', status);
+                return;
+            }
+            setBagItems(data.items);
+        })
         setBagOpen(!bagOpen);
         c.focus()
     }
@@ -54,10 +55,13 @@ function App() {
 
     function gameUI() {
         if (!user.loggedIn) {
+            c.hidden = true;
             return (
                 <h1 id='login_warning'>YOU NEED TO LOGIN TO PLAY!</h1>
             )
         }
+        c.hidden = false;
+        c.focus();
         return(
             <div>
                 <div id='coins'>{"$" + coins}</div>

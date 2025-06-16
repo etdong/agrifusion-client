@@ -10,7 +10,7 @@ export default function drawFriend(k: KAPLAYCtx, pos: Vec2) {
         k.area(),
         k.anchor('center'),
         {
-            playerId: -1,
+            username: '-1',
             name: 'Friend',
             home: {
                 fence: null as GameObj | null,
