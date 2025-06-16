@@ -47,18 +47,19 @@ export default function initGame(k: KAPLAYCtx) {
                     mode: 'cors',
                     credentials: 'include',
                 }).then(res => res.json()).then(data => {
+                    console.log(data)
                     if (data.loggedIn) {
                         player = drawPlayer(k, k.vec2(0, 0))
                         player.name = data.username;
                         player.playerId = data.id;
                         clearInterval(checkLogin);
-                        socket.emit('POST player/login', { playerId: data.id, playerName: data.name }, (response: { status: string; data: string; }) => {
+                        socket.emit('POST player/login', { username: data.username }, (response: { status: string; data: string; }) => {
                             if (response.status === 'ok') {
-                                console.debug(`Player ${data.id} logged in as ${data.name}`);
+                                console.debug(`Player ${data._id} logged in as ${data.username}`);
                                 socket.emit('GET player/data', (response: { status: string, data: string }) => {
                                     if (response.status === 'ok') {
-                                        playerList[player!.playerId] = player!;
-                                        console.debug(`Player ${player!.playerId} data loaded successfully`);
+                                        playerList[player!.name] = player!;
+                                        console.debug(`Player ${player!.name} data loaded successfully`);
                                         resolve();
                                     } else {
                                         reject(new Error(`Failed to load player data: ${response.data}`));
@@ -108,6 +109,10 @@ export default function initGame(k: KAPLAYCtx) {
 
         k.onKeyPress('r', () => {
             if (player) handleFarmPlacement(k, player);
+        })
+
+        k.onKeyPress('t', () => {
+            if (player) console.log(player.playerId);
         })
 
         for (let x = 0; x <= k.width(); x += GRID_SIZE) {

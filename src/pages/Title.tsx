@@ -16,10 +16,19 @@ export default function Title() {
         if (data.loggedIn) {
             window.location.href = '/#/play';
         } else {
-            const queryString = window.location.search;
-            const urlParams = new URLSearchParams(queryString);
-            console.log(urlParams.get('error'));
-            setErrMsg(urlParams.get('error') || '');
+            const cookieStrings = document.cookie.split(';');
+            const cookies: { [key: string]: string }  = {};
+            cookieStrings.forEach(cookie => {
+                const [key, value] = cookie.trim().split('=');
+                cookies[key] = value;
+            });
+
+            if (cookies['error']) {
+                // parse the error message from the cookie
+                const errMsg = decodeURIComponent(cookies['error']);
+                setErrMsg(errMsg);
+                document.cookie = 'error=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            }
         }
     })
 
@@ -45,20 +54,24 @@ export default function Title() {
                 {errorBox()}
                 <div id='login-form'>
                     <section>
-                        <label htmlFor="username">Username: </label>
-                        <input id="username" name="username" type="text" autoComplete="username" required autoFocus />
+                        <label htmlFor="username">Username:
+                            <input id="username" name="username" type="text" autoComplete="username" required autoFocus />
+                        </label>
                     </section>
                     <section>
-                        <label htmlFor="current-password">Password: </label>
-                        <input id="current-password" name="password" type="password" autoComplete="current-password" required />
+                        <label htmlFor="current-password">Password:
+                            <input id="current-password" name="password" type="password" autoComplete="current-password" required />
+                        </label>
                     </section>
                     <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
                 </div>
-            <br />
-            <button type="submit">Sign in</button>
+                <br />
+                <div id='buttons'>
+                    <button type="submit">Sign in</button>
+                    <button onClick={handleSignUp}>Sign up</button>
+                </div>
             </form>
             <br />
-            <button onClick={handleSignUp}>Sign up</button>
         </div>
     )
 }

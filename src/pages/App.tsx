@@ -53,7 +53,6 @@ function App() {
     }
 
     function gameUI() {
-        console.log(user)
         if (!user.loggedIn) {
             return (
                 <h1 id='login_warning'>YOU NEED TO LOGIN TO PLAY!</h1>
