@@ -9,6 +9,7 @@ export default function drawPlayer(k: KAPLAYCtx, pos: Vec2) {
         k.pos(pos),
         k.area(),
         k.anchor('center'),
+        k.body(),
         {
             username: '-1',
             placed: false,

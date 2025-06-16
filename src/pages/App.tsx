@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import socket from '../utils/socket'
 import './App.css'
+import { type BagItem } from '../components/bag'
 
 function App() {
     const c = document.getElementById('game') as HTMLCanvasElement;
@@ -22,23 +23,17 @@ function App() {
     const [coins, setCoins] = useState(0)
 
     const [bagOpen, setBagOpen] = useState(false)
-
-    type BagItem = { id: string; name: string; amount: number };
     const [bagItems, setBagItems] = useState<BagItem[]>([]);
 
-    function openInventory() {
-        socket.emit('GET player/inventory', (status: string, data: { items: BagItem[] }) => {
-            if (status !== 'ok') {
-                console.error('Failed to fetch inventory:', status);
-                return;
-            }
-            setBagItems(data.items);
-        })
-        setBagOpen(!bagOpen);
-        c.focus()
-    }
-
     const bag = () => {
+        if (bagItems.length === 0) {
+            return (
+                <div id='bag'>
+                    <h2>Bag</h2>
+                    <p>No items in bag.</p>
+                </div>
+            );
+        }
         return (
             <div id='bag'>
                 <h2>Bag</h2>
@@ -51,6 +46,22 @@ function App() {
                 </ul>
             </div>
         );
+    }
+
+    function openInventory() {
+        if (bagOpen) {
+            setBagOpen(false);
+            c.focus();
+            return;
+        }
+        socket.emit('GET player/bag', (response: { status: string, data: BagItem[] } ) => {
+            if (response.status === 'ok') {
+                setBagItems(response.data);
+                setBagOpen(true);
+                c.focus();
+            }
+            return;
+        })
     }
 
     function gameUI() {

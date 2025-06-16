@@ -3,8 +3,7 @@ import './Title.css'
 
 export default function Title() {
     const c = document.getElementById('game') as HTMLCanvasElement;
-    c.style.pointerEvents = 'none';
-    c.style.display = 'none';
+    c.hidden = true
     const r = document.getElementById('root') as HTMLCanvasElement;
     r.style.pointerEvents = 'all';
 

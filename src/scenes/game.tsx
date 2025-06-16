@@ -17,11 +17,51 @@ const playerList: { [key: string]: GameObj } = {};
 
 export default function initGame(k: KAPLAYCtx) {
     k.scene('game', () => {
+        // map area
         k.add([
             k.rect(GRID_SIZE * MAP_SIZE, GRID_SIZE * MAP_SIZE, { fill: false }),
             k.anchor('topleft'),
-            k.outline(2, k.rgb(255, 0, 0)),
             k.pos(-GRID_SIZE/2),
+        ]);
+
+        // left wall
+        k.add([
+            k.rect(2, GRID_SIZE * MAP_SIZE, { fill: false }),
+            k.anchor('topleft'),
+            k.outline(2, k.rgb(255, 0, 0)),
+            k.pos(-GRID_SIZE/2 - 2, -GRID_SIZE/2),
+            k.area(),
+            k.body({ isStatic: true })
+        ]);
+
+        // right wall
+        k.add([
+            k.rect(2, GRID_SIZE * MAP_SIZE, { fill: false }),
+            k.anchor('topleft'),
+            k.outline(2, k.rgb(255, 0, 0)),
+            k.pos(GRID_SIZE * MAP_SIZE - GRID_SIZE/2, -GRID_SIZE/2),
+            k.area(),
+            k.body({ isStatic: true })
+        ]);
+
+        // top wall
+        k.add([
+            k.rect(GRID_SIZE * MAP_SIZE, 2, { fill: false }),
+            k.anchor('topleft'),
+            k.outline(2, k.rgb(255, 0, 0)),
+            k.pos(-GRID_SIZE/2, -GRID_SIZE/2 - 2),
+            k.area(),
+            k.body({ isStatic: true })
+        ]);
+
+        // bottom wall
+        k.add([
+            k.rect(GRID_SIZE * MAP_SIZE, 2, { fill: false }),
+            k.anchor('topleft'),
+            k.outline(2, k.rgb(255, 0, 0)),
+            k.pos(-GRID_SIZE/2, GRID_SIZE * MAP_SIZE - GRID_SIZE/2),
+            k.area(),
+            k.body({ isStatic: true })
         ]);
 
         k.setCamPos(0, 0)
@@ -48,9 +88,9 @@ export default function initGame(k: KAPLAYCtx) {
                     credentials: 'include',
                 }).then(res => res.json()).then(data => {
                     if (data.loggedIn) {
+                        clearInterval(checkLogin);
                         player = drawPlayer(k, k.vec2(0, 0))
                         player.username = data.username;
-                        clearInterval(checkLogin);
                         socket.emit('POST player/login', { username: data.username }, (response: { status: string; data: string; }) => {
                             if (response.status === 'ok') {
                                 console.debug(`Player ${data.username} logged in`);
@@ -61,31 +101,27 @@ export default function initGame(k: KAPLAYCtx) {
                                         resolve();
                                     } else {
                                         reject(new Error(`Failed to load player data: ${response.data}`));
-                                        if (window.location.href === import.meta.env.VITE_CLIENT_URL + '/#/play') {
-                                            window.location.href = import.meta.env.VITE_CLIENT_URL
-                                        }
                                     }
                                 })
                             } else {
                                 reject(new Error(`Failed to log in: ${response.data}`));
-                                if (window.location.href === import.meta.env.VITE_CLIENT_URL + '/#/play') {
-                                    window.location.href = import.meta.env.VITE_CLIENT_URL
-                                }
                             }
                         })
                     } else {
-                        console.debug(`Failed to get login data: ${data.message} Retrying... (${tries + 1}/5)`);
+                        console.debug(`Failed to get login data: ${data.message}`);
+                        if (data.status === 400) {
+                            clearInterval(checkLogin);
+                            reject(new Error(`Player is not authenticated. Please log in.`));
+                            return
+                        }
                         tries++;
                         if (tries >= 5) {
                             clearInterval(checkLogin);
                             reject(new Error(`Failed to get login data after 5 attempts`));
-                            if (window.location.href === import.meta.env.VITE_CLIENT_URL + '/#/play') {
-                                window.location.href = import.meta.env.VITE_CLIENT_URL
-                            }
                         }
                     }
                 })
-            }, 1000)
+            }, 5000, true)
         }))
 
         socket.on('UPDATE player/pos', (data) => {
