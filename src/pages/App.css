@@ -11,6 +11,8 @@
 
 #login_warning {
     font-size: 4vmax;
+    width: 100%;
+    height: 100%;
     text-align: center;
 }
 
@@ -32,11 +34,10 @@
     border: none;
     outline: 1px solid black;
     background-color: white;
-    transition-duration: 0.5s;
-    transition-timing-function: ease;
     pointer-events: all;
 }
-.btn:hover {
+
+.btn:active {
     outline: 6px solid #269c36;
     color: #269c36;
     cursor: pointer;

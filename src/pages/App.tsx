@@ -64,11 +64,16 @@ function App() {
         })
     }
 
+    function handleRedirect() {
+        window.location.href = import.meta.env.VITE_CLIENT_URL
+    }
+
     function gameUI() {
         if (!user.loggedIn) {
             c.hidden = true;
+            r.style.pointerEvents = 'all';
             return (
-                <h1 id='login_warning'>YOU NEED TO LOGIN TO PLAY!</h1>
+                <h1 onClick={handleRedirect} id='login_warning'>YOU NEED TO LOGIN TO PLAY!</h1>
             )
         }
         c.hidden = false;

@@ -63,17 +63,11 @@ input:hover {
     margin-right: 2vmin;
 }
 
-button {
-    background-color: white;
-    padding: 2vmin;
-    font-size: 6vmin;
-    font-family: 'moot-jungle';
-    transition-duration: 0.5s;
+#btn_sign_in {
     margin: 2vmin;
 }
-
-button:hover {
-    outline: 6px solid #269c36;
+#btn_sign_up {
+    margin: 2vmin;
 }
 
 @font-face {

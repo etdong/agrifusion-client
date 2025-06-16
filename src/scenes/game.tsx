@@ -5,83 +5,75 @@ import { CropSize, CropType, type Crop } from "../components/crop";
 import drawPlayer from "../components/player";
 import socket from "../utils/socket";
 import drawFriend from "../components/friend";
+import drawBuyer from "../components/buyer";
+import drawBuyerUI from "../utils/buyer_utils";
 
 const GRID_SIZE = 72;
-
 const MAP_SIZE = 50
-
 const GameGrid: { [key: number]: { [key: number]: GameObj | null } } = Array.from({ length: MAP_SIZE }, () =>
     Array.from({ length: MAP_SIZE }, () => null))
-
 const playerList: { [key: string]: GameObj } = {};
 
 export default function initGame(k: KAPLAYCtx) {
     k.scene('game', () => {
-        // map area
-        k.add([
+        //#region Map area
+        const gameArea = k.add([
             k.rect(GRID_SIZE * MAP_SIZE, GRID_SIZE * MAP_SIZE, { fill: false }),
             k.anchor('topleft'),
             k.pos(-GRID_SIZE/2),
+            k.area(),
+            k.layer('bg')
         ]);
 
         // left wall
-        k.add([
+        gameArea.add([
             k.rect(2, GRID_SIZE * MAP_SIZE, { fill: false }),
             k.anchor('topleft'),
             k.outline(2, k.rgb(255, 0, 0)),
-            k.pos(-GRID_SIZE/2 - 2, -GRID_SIZE/2),
+            k.pos(0, 0),
             k.area(),
             k.body({ isStatic: true })
         ]);
 
         // right wall
-        k.add([
+        gameArea.add([
             k.rect(2, GRID_SIZE * MAP_SIZE, { fill: false }),
             k.anchor('topleft'),
             k.outline(2, k.rgb(255, 0, 0)),
-            k.pos(GRID_SIZE * MAP_SIZE - GRID_SIZE/2, -GRID_SIZE/2),
+            k.pos(GRID_SIZE * MAP_SIZE, 0),
             k.area(),
             k.body({ isStatic: true })
         ]);
 
         // top wall
-        k.add([
+        gameArea.add([
             k.rect(GRID_SIZE * MAP_SIZE, 2, { fill: false }),
             k.anchor('topleft'),
             k.outline(2, k.rgb(255, 0, 0)),
-            k.pos(-GRID_SIZE/2, -GRID_SIZE/2 - 2),
+            k.pos(0, 0),
             k.area(),
             k.body({ isStatic: true })
         ]);
 
         // bottom wall
-        k.add([
+        gameArea.add([
             k.rect(GRID_SIZE * MAP_SIZE, 2, { fill: false }),
             k.anchor('topleft'),
             k.outline(2, k.rgb(255, 0, 0)),
-            k.pos(-GRID_SIZE/2, GRID_SIZE * MAP_SIZE - GRID_SIZE/2),
+            k.pos(0, GRID_SIZE * MAP_SIZE),
             k.area(),
             k.body({ isStatic: true })
         ]);
+        //#endregion
 
         k.setCamPos(0, 0)
 
-        socket.on('UPDATE player/disconnect', (data) => {
-            const username = data.username;
-            const friend = playerList[username];
-            if (friend) {
-                friend.home.fence.destroy();
-                friend.destroy();
-                delete playerList[username];
-                console.debug(`Player ${username} disconnected`);
-            }
-        })
-
         let player: GameObj | null = null;
         
+        // Login checking and loading
         k.load(new Promise<void>((resolve, reject) => {
             let tries = 0;
-            const checkLogin = setInterval(() => {
+            const checkLogin = setInterval(function tryLogin() {
                 fetch(import.meta.env.VITE_SERVER_URL + "/api/user", { 
                     method: 'GET',
                     mode: 'cors',
@@ -112,7 +104,6 @@ export default function initGame(k: KAPLAYCtx) {
                         if (data.status === 400) {
                             clearInterval(checkLogin);
                             reject(new Error(`Player is not authenticated. Please log in.`));
-                            return
                         }
                         tries++;
                         if (tries >= 5) {
@@ -121,24 +112,33 @@ export default function initGame(k: KAPLAYCtx) {
                         }
                     }
                 })
-            }, 5000, true)
+                return tryLogin
+            }(), 5000)
         }))
 
-        socket.on('UPDATE player/pos', (data) => {
-            for (const i in data) {
-                const p = data[i];  
-                if (player && p.username !== '-1' && p.username !== player.username) {
-                    if (!playerList[p.username]) {
-                        const friend = drawFriend(k, k.vec2(p.pos.x, p.pos.y));
-                        friend.username = p.username;
-                        playerList[p.username] = friend;
-                    } else {
-                        const friend = playerList[p.username];
-                        friend.pos = k.vec2(p.pos.x, p.pos.y);
-                    }
-                }
-            }
-            
+        
+        gameArea.onMouseDown('left', () => {
+            if (!player || clicked) return;
+            // calculate mouse position relative to the player without using getRelativeMousePos
+            const mousePos = k.mousePos().sub(k.width() / 2, k.height() / 2);
+            const magnitude = Math.sqrt(mousePos.x * mousePos.x + mousePos.y * mousePos.y);
+            player.move(k.vec2(mousePos.x/magnitude, mousePos.y/magnitude).scale(225));
+
+        })
+
+        drawBuyer(k, k.vec2(300, 100), CropType.CABBAGE);
+
+        // add a button for placing farm
+        k.add([
+            k.text('Place Farm', { size: 24 }),
+            k.pos(k.width()/2, k.height() - 50),
+            k.anchor('top'),
+            k.color(0, 0, 0),
+            k.area(),
+            k.fixed(),
+            'place-farm-button'
+        ]).onClick(() => {
+            if (player) handleFarmPlacement(k, player);
         })
 
         k.onKeyPress('r', () => {
@@ -149,6 +149,11 @@ export default function initGame(k: KAPLAYCtx) {
             if (player) console.log(player.username);
         })
 
+        k.onClick('buyer', (buyer) => {
+            drawBuyerUI(k, buyer, 20);
+        })
+
+        //#region Gridlines
         for (let x = 0; x <= k.width(); x += GRID_SIZE) {
             k.add([
                 k.rect(2, k.height()),
@@ -171,6 +176,61 @@ export default function initGame(k: KAPLAYCtx) {
                 'gridline'
             ]);
         }
+
+        k.onUpdate(() => {
+            if (clicked) {
+                const mousePos = getRelativeMousePos(k);
+                clicked.pos = mousePos;
+            }
+
+            if (!player) return;
+            k.tween(
+                k.getCamPos(),
+                player.pos,
+                0.1,
+                newPos => {k.setCamPos(newPos)},
+                k.easings.easeInOutQuad
+            )
+
+            const camPos = k.getCamPos();
+            const camZoom = k.getCamScale();
+            const screenWidth = k.width() / camZoom.x;
+            const screenHeight = k.height() / camZoom.x;
+            const left = camPos.x - screenWidth / 2;
+            const top = camPos.y - screenHeight / 2;
+            const startX = Math.floor(left / GRID_SIZE) * GRID_SIZE + GRID_SIZE / 2;
+            const startY = Math.floor(top / GRID_SIZE) * GRID_SIZE + GRID_SIZE / 2; 
+
+            // Remove previous gridlines
+            k.get('gridline').forEach(line => line.destroy());
+
+            // Draw vertical gridlines
+            for (let x = startX; x < left + screenWidth; x += GRID_SIZE) {
+                k.add([
+                    k.rect(1, screenHeight),
+                    k.color(200, 200, 200),
+                    k.pos(x, top),
+                    k.anchor('topleft'),
+                    k.layer('bg'),
+                    'gridline'
+                ]);
+            }
+
+            // Draw horizontal gridlines
+            for (let y = startY; y < top + screenHeight; y += GRID_SIZE) {
+                k.add([
+                    k.rect(screenWidth, 1),
+                    k.color(200, 200, 200),
+                    k.pos(left, y),
+                    k.anchor('topleft'),
+                    k.layer('bg'),
+                    'gridline'
+                ]);
+            }
+        });
+        //#endregion
+
+        //#region Buttons
 
         const button1 = k.add([
             k.text('Carrot', { size: 24 }),
@@ -220,8 +280,9 @@ export default function initGame(k: KAPLAYCtx) {
             console.debug("Current Game Grid State:");
             console.debug(GameGrid);
         })
-        
+        //#endregion
 
+        //#region Dragging logic
         let clicked: GameObj | null = null;
         let oldPos = k.vec2(0, 0);
 
@@ -251,58 +312,27 @@ export default function initGame(k: KAPLAYCtx) {
         });
 
         k.onUpdate(() => {
-            if (clicked) {
-                const mousePos = getRelativeMousePos(k);
-                clicked.pos = mousePos;
-            }
+            
         });
+        //#endregion
 
-        k.onUpdate(() => {
-            if (!player) return;
-            k.tween(
-                k.getCamPos(),
-                player.pos,
-                0.1,
-                newPos => {k.setCamPos(newPos)},
-                k.easings.easeInOutQuad
-            )
-
-            const camPos = k.getCamPos();
-            const camZoom = k.getCamScale();
-            const screenWidth = k.width() / camZoom.x;
-            const screenHeight = k.height() / camZoom.x;
-            const left = camPos.x - screenWidth / 2;
-            const top = camPos.y - screenHeight / 2;
-            const startX = Math.floor(left / GRID_SIZE) * GRID_SIZE + GRID_SIZE / 2;
-            const startY = Math.floor(top / GRID_SIZE) * GRID_SIZE + GRID_SIZE / 2; 
-
-            // Remove previous gridlines
-            k.get('gridline').forEach(line => line.destroy());
-
-            // Draw vertical gridlines
-            for (let x = startX; x < left + screenWidth; x += GRID_SIZE) {
-                k.add([
-                    k.rect(1, screenHeight),
-                    k.color(200, 200, 200),
-                    k.pos(x, top),
-                    k.anchor('topleft'),
-                    k.layer('bg'),
-                    'gridline'
-                ]);
+        //#region Socket handling
+        socket.on('UPDATE player/pos', (data) => {
+            for (const i in data) {
+                const p = data[i];  
+                if (player && p.username !== '-1' && p.username !== player.username) {
+                    if (!playerList[p.username]) {
+                        const friend = drawFriend(k, k.vec2(p.pos.x, p.pos.y));
+                        friend.username = p.username;
+                        playerList[p.username] = friend;
+                    } else {
+                        const friend = playerList[p.username];
+                        friend.pos = k.vec2(p.pos.x, p.pos.y);
+                    }
+                }
             }
-
-            // Draw horizontal gridlines
-            for (let y = startY; y < top + screenHeight; y += GRID_SIZE) {
-                k.add([
-                    k.rect(screenWidth, 1),
-                    k.color(200, 200, 200),
-                    k.pos(left, y),
-                    k.anchor('topleft'),
-                    k.layer('bg'),
-                    'gridline'
-                ]);
-            }
-        });
+            
+        })
 
         setInterval(() => {
             if (player) {
@@ -313,7 +343,17 @@ export default function initGame(k: KAPLAYCtx) {
                 })
             }
         }, 1000/10);
-        
+
+        socket.on('UPDATE player/disconnect', (data) => {
+            const username = data.username;
+            const friend = playerList[username];
+            if (friend) {
+                friend.home.fence.destroy();
+                friend.destroy();
+                delete playerList[username];
+                console.debug(`Player ${username} disconnected`);
+            }
+        })
 
         socket.on('UPDATE game/grid', (data) => {
             const gridData = data.grid;
@@ -391,6 +431,7 @@ export default function initGame(k: KAPLAYCtx) {
                 }
             }
         })
+        //#endregion
     });
 }
 

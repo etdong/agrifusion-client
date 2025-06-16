@@ -11,6 +11,8 @@ export const CropType = {
     GARLIC: 'garlic'
 } as const;
 
+export type CropType = (typeof CropType)[keyof typeof CropType];
+
 export const CropSize = {
     SMALL: 20,
     MEDIUM: 25,

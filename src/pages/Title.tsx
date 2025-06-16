@@ -66,8 +66,8 @@ export default function Title() {
                 </div>
                 <br />
                 <div id='buttons'>
-                    <button type="submit">Sign in</button>
-                    <button onClick={handleSignUp}>Sign up</button>
+                    <button className='btn' id='btn_sign_in' type="submit">Sign in</button>
+                    <button className='btn' id='btn_sign_up' onClick={handleSignUp}>Sign up</button>
                 </div>
             </form>
             <br />
