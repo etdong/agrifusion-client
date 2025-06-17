@@ -74,7 +74,7 @@ export default function initGame(k: KAPLAYCtx) {
         k.load(new Promise<void>((resolve, reject) => {
             let tries = 0;
             const checkLogin = setInterval(function tryLogin() {
-                fetch("https://agrifusion-server.onrender.com/api/user", { 
+                fetch("https://api.donger.ca/api/user", { 
                     method: 'GET',
                     mode: 'cors',
                     credentials: 'include',

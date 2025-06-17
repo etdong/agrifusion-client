@@ -7,7 +7,7 @@ export default function Title() {
     const r = document.getElementById('root') as HTMLCanvasElement;
     r.style.pointerEvents = 'all';
 
-    fetch("https://agrifusion-server.onrender.com/api/user", { 
+    fetch("https://api.donger.ca/api/user", { 
         method: 'GET',
         mode: 'cors',
         credentials: 'include',
@@ -49,7 +49,7 @@ export default function Title() {
             <div id='title'>
                 Agrifusion
             </div>
-            <form action={`https://agrifusion-server.onrender.com/api/login`} method="post">
+            <form action={`https://api.donger.ca/api/login`} method="post">
                 {errorBox()}
                 <div id='login-form'>
                     <section>

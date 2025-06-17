@@ -11,7 +11,7 @@ function App() {
     const [user, setUser] = useState({ id: "", username: "", loggedIn: false });
 
     useEffect(() => {
-		fetch("https://agrifusion-server.onrender.com/api/user", { 
+		fetch("https://api.donger.ca/api/user", { 
 			method: 'GET',
 			mode: 'cors',
 			credentials: 'include',
