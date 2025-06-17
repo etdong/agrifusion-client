@@ -9,8 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "add-domain": "echo \"webhunt.donger.ca\" > build/CNAME",
-    "deploy": "gh-pages -d build"
+    "add-domain": "echo \"agrifusion.donger.ca\" > dist/CNAME",
+    "deploy": "gh-pages -d dist"
   },
   "dependencies": {
     "kaplay": "^3001.0.18",
