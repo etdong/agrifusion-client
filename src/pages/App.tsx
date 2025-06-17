@@ -11,7 +11,7 @@ function App() {
     const [user, setUser] = useState({ id: "", username: "", loggedIn: false });
 
     useEffect(() => {
-		fetch(import.meta.env.VITE_SERVER_URL + "/api/user", { 
+		fetch("https://agrifusion-server.onrender.com/api/user", { 
 			method: 'GET',
 			mode: 'cors',
 			credentials: 'include',
@@ -65,7 +65,7 @@ function App() {
     }
 
     function handleRedirect() {
-        window.location.href = import.meta.env.VITE_CLIENT_URL
+        window.location.href = "https://agrifusion.donger.ca"
     }
 
     function gameUI() {
