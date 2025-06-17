@@ -21,7 +21,7 @@ export default function Title() {
                 const [key, value] = cookie.trim().split('=');
                 cookies[key] = value;
             });
-
+            console.log(cookies);
             if (cookies['error']) {
                 // parse the error message from the cookie
                 const errMsg = decodeURIComponent(cookies['error']);
