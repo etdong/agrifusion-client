@@ -10,6 +10,7 @@ export default function drawPlayer(k: KAPLAYCtx, pos: Vec2) {
         k.area(),
         k.anchor('center'),
         k.body(),
+        k.layer('fg'),
         {
             username: '-1',
             placed: false,

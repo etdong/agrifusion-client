@@ -118,7 +118,7 @@ export default function initGame(k: KAPLAYCtx) {
 
         
         gameArea.onMouseDown('left', () => {
-            if (!player || clicked) return;
+            if (!player || clicked || player.frozen) return;
             // calculate mouse position relative to the player without using getRelativeMousePos
             const mousePos = k.mousePos().sub(k.width() / 2, k.height() / 2);
             const magnitude = Math.sqrt(mousePos.x * mousePos.x + mousePos.y * mousePos.y);
@@ -126,10 +126,9 @@ export default function initGame(k: KAPLAYCtx) {
 
         })
 
-        drawBuyer(k, k.vec2(300, 100), CropType.CABBAGE);
 
         // add a button for placing farm
-        k.add([
+        const btnPlaceFarm = k.add([
             k.text('Place Farm', { size: 24 }),
             k.pos(k.width()/2, k.height() - 50),
             k.anchor('top'),
@@ -137,7 +136,9 @@ export default function initGame(k: KAPLAYCtx) {
             k.area(),
             k.fixed(),
             'place-farm-button'
-        ]).onClick(() => {
+        ])
+
+        btnPlaceFarm.onClick(() => {
             if (player) handleFarmPlacement(k, player);
         })
 
@@ -145,9 +146,21 @@ export default function initGame(k: KAPLAYCtx) {
             if (player) handleFarmPlacement(k, player);
         })
 
-        k.onKeyPress('t', () => {
-            if (player) console.log(player.username);
+        // add a shop button
+        k.add([
+            k.text('Shop', { size: 24 }),
+            k.pos(k.width()/2, k.height() - 100),
+            k.anchor('top'),
+            k.color(0, 0, 0),
+            k.area(),
+            k.fixed(),
+            'shop-button'
+        ]).onClick(() => {
+            // Open the shop UI
+            console.debug("Shop button clicked");
         })
+
+        drawBuyer(k, k.vec2(300, 100), CropType.CABBAGE);
 
         k.onClick('buyer', (buyer) => {
             drawBuyerUI(k, buyer, 20);
@@ -461,12 +474,13 @@ function handleFarmPlacement(k: KAPLAYCtx, player: GameObj) {
             if (response.status === 'ok') {
                 console.debug(`Player ${player.username} farm data received`);
                 player.placed = true;
+                player.freeze = false;
+                placingText.destroy();
+                placingTextBackground.destroy()
             } else {
                 console.error('Failed to place farm:', response.data);
             }
-            player.freeze = false;
-            placingText.destroy();
-            placingTextBackground.destroy()
+            
         })
     } else {
         const savingText = k.add([

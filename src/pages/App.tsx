@@ -73,7 +73,7 @@ function App() {
             c.hidden = true;
             r.style.pointerEvents = 'all';
             return (
-                <h1 onClick={handleRedirect} id='login_warning'>YOU NEED TO LOGIN TO PLAY!</h1>
+                <h1 onClick={handleRedirect} id='login_warning'>YOU NEED TO LOGIN TO PLAY!<br/>Click/tap to login</h1>
             )
         }
         c.hidden = false;
