@@ -7,7 +7,7 @@ export default function Title() {
     const r = document.getElementById('root') as HTMLCanvasElement;
     r.style.pointerEvents = 'all';
 
-    fetch("https://api.donger.ca/api/user", { 
+    fetch(`${import.meta.env.VITE_SERVER_URL}/api/user`, { 
         method: 'GET',
         mode: 'cors',
         credentials: 'include',
@@ -21,7 +21,6 @@ export default function Title() {
                 const [key, value] = cookie.trim().split('=');
                 cookies[key] = value;
             });
-            console.log(cookies);
             if (cookies['error']) {
                 // parse the error message from the cookie
                 const errMsg = decodeURIComponent(cookies['error']);
@@ -41,7 +40,7 @@ export default function Title() {
     }
 
     function handleSignUp() {
-        window.location.href ='https://agrifusion.donger.ca/#/signup'
+        window.location.href = `${import.meta.env.VITE_CLIENT_URL}/#/signup`
     }
 
     return (
@@ -49,7 +48,7 @@ export default function Title() {
             <div id='title'>
                 Agrifusion
             </div>
-            <form action={`https://api.donger.ca/api/login`} method="post">
+            <form action={`${import.meta.env.VITE_SERVER_URL}/api/login`} method="post">
                 {errorBox()}
                 <div id='login-form'>
                     <section>
