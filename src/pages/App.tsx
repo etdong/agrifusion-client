@@ -9,7 +9,6 @@ function App() {
     r.style.pointerEvents = 'none';
 
     const [user, setUser] = useState({ id: "", username: "", loggedIn: false });
-
     useEffect(() => {
 		fetch(`${import.meta.env.VITE_SERVER_URL}/api/user`, { 
 			method: 'GET',
@@ -21,10 +20,19 @@ function App() {
 	}, [])
 
     const [coins, setCoins] = useState(0)
+    socket.on('UPDATE player/coins', (data: { coins: number }) => {
+        setCoins(data.coins)
+    })
+    
+    const [level, setLevel] = useState(1)
+    const [exp, setExp] = useState(0)
+    socket.on('UPDATE player/level', (data: { level: number, exp: number }) => {
+        setLevel(data.level)
+        setExp(data.exp)
+    })
 
     const [bagOpen, setBagOpen] = useState(false)
     const [bagItems, setBagItems] = useState<BagItem[]>([]);
-
     const bag = () => {
         if (bagItems.length === 0) {
             return (
@@ -79,17 +87,15 @@ function App() {
         c.hidden = false;
         c.focus();
         return(
-            <div>
+            <div id='ui_container'>
                 <div id='coins'>{"$" + coins}</div>
                 <button onClick={openInventory} className='btn' id='btn_bag'>BAG</button>
                 {bagOpen && bag()}
+                <div id='level'>{level}</div>
+                <div id='exp'>{exp}</div>
             </div>
         )
     }
-
-    socket.on('UPDATE player/coins', (data: { coins: number }) => {
-        setCoins(data.coins)
-    })
 
     return (
         <div className='background'>

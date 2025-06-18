@@ -7,6 +7,7 @@
     align-items: center;
     font-family: 'moot-jungle';
     color: black;
+    font-size: 4vmax;
 }
 
 #login_warning {
@@ -52,11 +53,23 @@
 #bag {
     background-color: white;
     width: max-content;
-    font-size: 4vmax;
-    color: black;
     outline: 2px solid black;
     padding-left: 6vmax;
     padding-right: 6vmax;
     pointer-events: all;
+}
+
+#level {
+    position: absolute;
+    bottom: 10vmin;
+    left: 6vmin;
+    z-index: 1;
+}
+
+#exp {
+    position: absolute;
+    bottom: 2vmin;
+    left: 6vmin;
+    z-index: 1;
 }
 
