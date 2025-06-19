@@ -1,7 +1,7 @@
 import { Vec2, type GameObj, type KAPLAYCtx } from "kaplay";
 import { getRelativeMousePos } from "../utils/cam_utils";
 import spawnCrop from "../utils/crop_utils";
-import { CropSize, CropType, type Crop } from "../components/crop";
+import { CropType, type Crop } from "../components/crop";
 import drawPlayer from "../components/player";
 import socket from "../utils/socket";
 import drawFriend from "../components/friend";
@@ -22,7 +22,8 @@ export default function initGame(k: KAPLAYCtx) {
             k.anchor('topleft'),
             k.pos(-GRID_SIZE/2),
             k.area(),
-            k.layer('bg')
+            k.layer('bg'),
+            k.z(-10)
         ]);
 
         // left wall
@@ -83,7 +84,9 @@ export default function initGame(k: KAPLAYCtx) {
                         clearInterval(checkLogin);
                         player = drawPlayer(k, k.vec2(0, 0))
                         player.username = data.username;
-                        socket.emit('POST player/login', { username: data.username }, (response: { status: string; data: string; }) => {
+                        sendPlayerPos(k, player);
+                        socket.emit('POST player/login', { username: data.username, lastLogin: data.lastLogin }, (response: { status: string; data: string; }) => {
+                            console.log(data)
                             if (response.status === 'ok') {
                                 console.debug(`Player ${data.username} logged in`);
                                 socket.emit('GET player/data', (response: { status: string, data: string }) => {
@@ -116,56 +119,6 @@ export default function initGame(k: KAPLAYCtx) {
             }(), 5000)
         }))
 
-        
-        gameArea.onMouseDown('left', () => {
-            if (!player || clicked || player.frozen) return;
-            // calculate mouse position relative to the player without using getRelativeMousePos
-            const mousePos = k.mousePos().sub(k.width() / 2, k.height() / 2);
-            const magnitude = Math.sqrt(mousePos.x * mousePos.x + mousePos.y * mousePos.y);
-            player.move(k.vec2(mousePos.x/magnitude, mousePos.y/magnitude).scale(225));
-
-        })
-
-
-        // add a button for placing farm
-        const btnPlaceFarm = k.add([
-            k.text('Place Farm', { size: 24 }),
-            k.pos(k.width()/2, k.height() - 50),
-            k.anchor('top'),
-            k.color(0, 0, 0),
-            k.area(),
-            k.fixed(),
-            'place-farm-button'
-        ])
-
-        btnPlaceFarm.onClick(() => {
-            if (player) handleFarmPlacement(k, player);
-        })
-
-        k.onKeyPress('r', () => {
-            if (player) handleFarmPlacement(k, player);
-        })
-
-        // add a shop button
-        k.add([
-            k.text('Shop', { size: 24 }),
-            k.pos(k.width()/2, k.height() - 100),
-            k.anchor('top'),
-            k.color(0, 0, 0),
-            k.area(),
-            k.fixed(),
-            'shop-button'
-        ]).onClick(() => {
-            // Open the shop UI
-            console.debug("Shop button clicked");
-        })
-
-        drawBuyer(k, k.vec2(300, 100), CropType.CABBAGE);
-
-        k.onClick('buyer', (buyer) => {
-            drawBuyerUI(k, buyer, 20);
-        })
-
         //#region Gridlines
         for (let x = 0; x <= k.width(); x += GRID_SIZE) {
             k.add([
@@ -191,12 +144,24 @@ export default function initGame(k: KAPLAYCtx) {
         }
 
         k.onUpdate(() => {
+            if (!player) return;
+
             if (clicked) {
-                const mousePos = getRelativeMousePos(k);
-                clicked.pos = mousePos;
+                switch (clicked.tags[1]) {
+                    case 'joystick': {
+                        const mousePos = getRelativeMousePos(k);
+                        clicked.pos = mousePos;
+                        break;
+                    }
+                        
+                    case 'crop': {
+                        const mousePos = getRelativeMousePos(k);
+                        clicked.pos = mousePos;
+                        break
+                    }
+                }
             }
 
-            if (!player) return;
             k.tween(
                 k.getCamPos(),
                 player.pos,
@@ -215,7 +180,7 @@ export default function initGame(k: KAPLAYCtx) {
             const startY = Math.floor(top / GRID_SIZE) * GRID_SIZE + GRID_SIZE / 2; 
 
             // Remove previous gridlines
-            k.get('gridline').forEach(line => line.destroy());
+            k.get('gridline').forEach(line => {line.destroy()});
 
             // Draw vertical gridlines
             for (let x = startX; x < left + screenWidth; x += GRID_SIZE) {
@@ -245,54 +210,151 @@ export default function initGame(k: KAPLAYCtx) {
 
         //#region Buttons
 
-        const button1 = k.add([
-            k.text('Carrot', { size: 24 }),
-            k.pos(k.vec2(10, 10)),
-            k.area(),
-            k.color(255,0,0)
-        ])
-
-        const button2 = k.add([
-            k.text('Cabbage', { size: 24 }),
-            k.pos(button1.pos.add(k.vec2(0, 32))),
-            k.anchor('topleft'),
-            k.color(0, 255, 0),
-            k.area(),
-            'button-text'
-        ])
-
-        const button3 = k.add([
-            k.text('Check Grid', { size: 24 }),
-            k.pos(button2.pos.add(k.vec2(0, 32))),
-            k.anchor('topleft'),
-            k.color(255, 255, 0),
-            k.area(),
-            'button-text'
-        ])
-
-        button1.onClick(() => {
-            spawnCrop(k, snapToGrid(k, k.vec2(400, 400)), CropSize.SMALL, CropType.CARROT);
+        k.onKeyPress('r', () => {
+            if (player) handleFarmPlacement(k, player);
         })
 
-        button2.onClick(() => {
-            const newCrop: Crop = {
-                id: Math.floor(Math.random() * 1000), // Random ID for the crop
-                pos: getGridCoords(k, k.vec2(200, 200)),
-                type: CropType.CABBAGE,
-                size: CropSize.MEDIUM
-            }
-            socket.emit('POST game/crop/spawn', { newCrop }, (response: { status: string, data: Crop }) => {
-                if (response.status === 'ok') {
-                    console.debug(`Crop spawned ${response.data}`);
+        const btnContainer = k.add([
+            k.rect(40, 40),
+            k.outline(2, k.rgb(0, 0, 0)),
+            k.pos(k.width() / 2, k.height() - 50),
+            k.area(),
+            k.z(1000),
+            k.anchor('top'),
+            k.fixed(),
+        ])
+
+        let shown = false;
+        let menuItems: GameObj[] = []
+
+        btnContainer.onClick(() => {
+            if (shown) {
+                menuItems.forEach(item => {
+                    item.destroy();
+                })
+                shown = false;
+            } else {
+                menuItems = showMenu(k, btnContainer, player!);
+                if (k.width() < 600) {
+                    menuItems.forEach(item => {
+                        item.anchor = 'botright'
+                    })
                 }
-            })
+                
+                shown = true;
+            }
         })
 
-        button3.onClick(() => {
-            // Log the current state of the game grid
-            console.debug("Current Game Grid State:");
-            console.debug(GameGrid);
+        if (k.width() < 600) {
+            btnContainer.anchor = 'topright'
+            btnContainer.pos = k.vec2(k.width(), k.height() / 2);
+            // make buttons for mobile device mov ment
+            const moveContainer = k.add([
+                k.rect(0, 0),
+                k.pos(k.width() / 2, k.height() - 100),
+                k.z(1000),
+                k.anchor('bot'),
+                k.fixed(),
+            ])
+
+            moveContainer.add([
+                k.circle(70),
+                k.color(0, 0, 0),
+                k.area(),
+                'move_btn'
+            ])
+
+            moveContainer.add([
+                k.circle(20),
+                k.color(255, 0, 255),
+                'joystick'
+            ])
+
+            // moveContainer.add([
+            //     k.polygon([
+            //         k.vec2(0, 0),
+            //         k.vec2(-50, 25),
+            //         k.vec2(0, 50),
+            //     ]),
+            //     k.pos(-25, 0),
+            //     k.color(0, 0, 0),
+            //     k.area(),
+            //     k.fixed(),
+            //     'move_btn',
+            //     {
+            //         direction: 'left'
+            //     }
+            // ])
+
+            // moveContainer.add([
+            //     k.polygon([
+            //         k.vec2(0, 0),
+            //         k.vec2(50, 25),
+            //         k.vec2(0, 50),
+            //     ]),
+            //     k.pos(25, 0),
+            //     k.color(0, 0, 0),
+            //     k.area(),
+            //     k.fixed(),
+            //     'move_btn',
+            //     {
+            //         direction: 'right'
+            //     }
+            // ]);
+
+            // moveContainer.add([
+            //     k.polygon([
+            //         k.vec2(-25, 0),
+            //         k.vec2(0, -50),
+            //         k.vec2(25, 0),
+            //     ]),
+            //     k.pos(0, 0),
+            //     k.color(0, 0, 0),
+            //     k.area(),
+            //     k.fixed(),
+            //     'move_btn',
+            //     {
+            //         direction: 'up'
+            //     }
+            // ]);
+
+            //  moveContainer.add([
+            //     k.polygon([
+            //         k.vec2(-25, 0),
+            //         k.vec2(0, 50),
+            //         k.vec2(25, 0),
+            //     ]),
+            //     k.pos(0, 50),
+            //     k.color(0, 0, 0),
+            //     k.area(),
+            //     k.fixed(),
+            //     'move_btn',
+            //     {
+            //         direction: 'down'
+            //     }
+            // ]);
+
+            k.onClick('move_btn', (obj) => {
+                if (clicked && clicked !== obj) {
+                    return
+                }
+                clicked = k.get('joystick', { recursive: true })[0];
+                clicked.z = 10; // Bring the clicked joystick to the front
+            })
+
+            k.onMouseRelease("left", () => {
+                if (clicked) {
+                    clicked = null;
+                }
+            });
+        }
+
+        drawBuyer(k, k.vec2(300, 100), CropType.CABBAGE);
+
+        k.onClick('buyer', (buyer) => {
+            drawBuyerUI(k, buyer, 20);
         })
+
         //#endregion
 
         //#region Dragging logic
@@ -323,10 +385,6 @@ export default function initGame(k: KAPLAYCtx) {
             }
             k.setCamPos(k.getCamPos())
         });
-
-        k.onUpdate(() => {
-            
-        });
         //#endregion
 
         //#region Socket handling
@@ -346,16 +404,6 @@ export default function initGame(k: KAPLAYCtx) {
             }
             
         })
-
-        setInterval(() => {
-            if (player) {
-                socket.emit('POST player/pos', { pos: player.pos }, (response: { status: string; data: string; }) => {
-                    if (response.status !== 'ok') {
-                        console.error('Failed to update player position:', response.data);
-                    }
-                })
-            }
-        }, 1000/10);
 
         socket.on('UPDATE player/disconnect', (data) => {
             const username = data.username;
@@ -548,4 +596,67 @@ function getGridCoords(k: KAPLAYCtx, pos: { x: number, y: number }) {
         x: snapToGrid(k, pos).x / GRID_SIZE,
         y: snapToGrid(k, pos).y / GRID_SIZE
     };
+}
+
+function sendPlayerPos(k: KAPLAYCtx, player: GameObj) {
+    if (player) {
+        socket.emit('POST player/pos', { pos: player.pos }, (response: { status: string; data: string; }) => {
+            if (response.status !== 'ok') {
+                console.error('Failed to update player position:', response.data);
+            }
+        })
+    }
+    setTimeout(sendPlayerPos, 1000/10, k, player);
+}
+
+function showMenu(k: KAPLAYCtx, container: GameObj, player: GameObj) {
+    // add a button for placing farm
+    const btnPlaceFarm = container.add([
+        k.text('Place Farm', { size: 24 }),
+        k.pos(0, -25),
+        k.anchor('center'),
+        k.area(),
+        k.color(0, 0, 0),
+        'place-farm-button'
+    ])
+
+    btnPlaceFarm.onClick(() => {
+        if (player) handleFarmPlacement(k, player);
+    })
+
+    // add a shop button
+    const btnShop = container.add([
+        k.text('Shop', { size: 24 }),
+        k.pos(0, -75),
+        k.anchor('center'),
+        k.area(),
+        k.color(0, 0, 0),
+        'shop-button'
+    ])
+
+    btnShop.onClick(() => {
+        // Open the shop UI
+        console.debug("Shop button clicked");
+    })
+
+    // add a crate button
+    const btnCrate = container.add([
+        k.text('Crate', { size: 24 }),
+        k.pos(0, -125),
+        k.anchor('center'),
+        k.color(0, 0, 0),
+        k.area(),
+        k.fixed(),
+        'crate-button'
+    ])
+
+    btnCrate.onClick(() => {
+        socket.emit('POST game/crop/spawn', (response: { status: string, data: Crop }) => {
+            if (response.status === 'ok') {
+                console.debug(`Crop spawned ${response.data}`);
+            }
+        })
+    })
+
+    return [btnPlaceFarm, btnShop, btnCrate];
 }

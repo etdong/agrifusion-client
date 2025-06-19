@@ -31,6 +31,11 @@ function App() {
         setExp(data.exp)
     })
 
+    const [crates, setCrates] = useState(0)
+    socket.on('UPDATE player/crates', (data: { crates: number }) => {
+        setCrates(data.crates)
+    })
+
     const [bagOpen, setBagOpen] = useState(false)
     const [bagItems, setBagItems] = useState<BagItem[]>([]);
     const bag = () => {
@@ -93,6 +98,7 @@ function App() {
                 {bagOpen && bag()}
                 <div id='level'>{level}</div>
                 <div id='exp'>{exp}</div>
+                <div id='crates'>{crates}</div>
             </div>
         )
     }

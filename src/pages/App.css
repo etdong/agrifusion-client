@@ -73,3 +73,9 @@
     z-index: 1;
 }
 
+#crates {
+    position: absolute;
+    bottom: 2vmin;
+    right: 12vmin;
+    z-index: 1;
+}

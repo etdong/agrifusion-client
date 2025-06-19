@@ -1,11 +1,12 @@
 export const CropType = {
+    WHEAT: 'wheat',
+    CANE: 'sugarcane',
     CARROT: 'carrot',
+    CABBAGE: 'cabbage',
     POTATO: 'potato',
     TOMATO: 'tomato',
-    CABBAGE: 'cabbage',
-    WHEAT: 'wheat',
+    PUMPKIN: 'pumpkin',
     CORN: 'corn',
-    RICE: 'rice',
     BEAN: 'bean',
     ONION: 'onion',
     GARLIC: 'garlic'

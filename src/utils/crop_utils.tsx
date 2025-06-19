@@ -30,8 +30,17 @@ export default function spawnCrop(k: KAPLAYCtx, pos: Vec2, size: number, type: s
     ]);
 
     switch (type) {
+        case CropType.WHEAT:
+            crop.color = k.rgb(255, 228, 181); // Wheat color
+            break;
         case CropType.CARROT:
             crop.color = k.rgb(255, 165, 0); // Orange for carrot
+            break;
+        case CropType.CABBAGE:
+            crop.color = k.rgb(144, 238, 144); // Light green for cabbage
+            break;
+        case CropType.CANE:
+            crop.color = k.rgb(255, 255, 224); // Light yellow for sugarcane
             break;
         case CropType.POTATO:
             crop.color = k.rgb(210, 180, 140); // Tan for potato
@@ -39,17 +48,11 @@ export default function spawnCrop(k: KAPLAYCtx, pos: Vec2, size: number, type: s
         case CropType.TOMATO:
             crop.color = k.rgb(255, 99, 71); // Red for tomato
             break;
-        case CropType.CABBAGE:
-            crop.color = k.rgb(144, 238, 144); // Light green for cabbage
-            break;
-        case CropType.WHEAT:
-            crop.color = k.rgb(255, 228, 181); // Wheat color
+        case CropType.PUMPKIN:
+            crop.color = k.rgb(255, 165, 0); // Orange for pumpkin
             break;
         case CropType.CORN:
             crop.color = k.rgb(255, 255, 0); // Yellow for corn
-            break;
-        case CropType.RICE:
-            crop.color = k.rgb(245, 245, 220); // Beige for rice
             break;
         case CropType.BEAN:
             crop.color = k.rgb(34, 139, 34); // Green for bean
