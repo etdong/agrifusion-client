@@ -149,8 +149,15 @@ export default function initGame(k: KAPLAYCtx) {
             if (clicked) {
                 switch (clicked.tags[1]) {
                     case 'joystick': {
-                        const mousePos = getRelativeMousePos(k);
-                        clicked.pos = mousePos;
+                        const baseX = k.width() / 2;
+                        const baseY = k.height() - 100;
+                        const mousePos = k.mousePos().sub(k.vec2(baseX, baseY));
+                        const magnitude = Math.sqrt(mousePos.x * mousePos.x + mousePos.y * mousePos.y);
+                        const scalingFactor = Math.min(magnitude, 60); // Limit the movement to a maximum of 50 pixels
+                        const joyPosX = mousePos.x / magnitude * scalingFactor;
+                        const joyPosY = mousePos.y / magnitude * scalingFactor;
+                        player.move(joyPosX * 4 + 10, joyPosY * 4 + 10);
+                        clicked.pos = k.vec2(joyPosX, joyPosY);
                         break;
                     }
                         
@@ -261,78 +268,17 @@ export default function initGame(k: KAPLAYCtx) {
                 k.circle(70),
                 k.color(0, 0, 0),
                 k.area(),
+                k.outline(2, k.rgb(0, 0, 0)),
+                k.opacity(0.7),
                 'move_btn'
             ])
 
             moveContainer.add([
                 k.circle(20),
-                k.color(255, 0, 255),
+                k.color(220, 220, 220),
+                k.outline(2, k.rgb(0, 0, 0)),
                 'joystick'
             ])
-
-            // moveContainer.add([
-            //     k.polygon([
-            //         k.vec2(0, 0),
-            //         k.vec2(-50, 25),
-            //         k.vec2(0, 50),
-            //     ]),
-            //     k.pos(-25, 0),
-            //     k.color(0, 0, 0),
-            //     k.area(),
-            //     k.fixed(),
-            //     'move_btn',
-            //     {
-            //         direction: 'left'
-            //     }
-            // ])
-
-            // moveContainer.add([
-            //     k.polygon([
-            //         k.vec2(0, 0),
-            //         k.vec2(50, 25),
-            //         k.vec2(0, 50),
-            //     ]),
-            //     k.pos(25, 0),
-            //     k.color(0, 0, 0),
-            //     k.area(),
-            //     k.fixed(),
-            //     'move_btn',
-            //     {
-            //         direction: 'right'
-            //     }
-            // ]);
-
-            // moveContainer.add([
-            //     k.polygon([
-            //         k.vec2(-25, 0),
-            //         k.vec2(0, -50),
-            //         k.vec2(25, 0),
-            //     ]),
-            //     k.pos(0, 0),
-            //     k.color(0, 0, 0),
-            //     k.area(),
-            //     k.fixed(),
-            //     'move_btn',
-            //     {
-            //         direction: 'up'
-            //     }
-            // ]);
-
-            //  moveContainer.add([
-            //     k.polygon([
-            //         k.vec2(-25, 0),
-            //         k.vec2(0, 50),
-            //         k.vec2(25, 0),
-            //     ]),
-            //     k.pos(0, 50),
-            //     k.color(0, 0, 0),
-            //     k.area(),
-            //     k.fixed(),
-            //     'move_btn',
-            //     {
-            //         direction: 'down'
-            //     }
-            // ]);
 
             k.onClick('move_btn', (obj) => {
                 if (clicked && clicked !== obj) {
@@ -341,12 +287,6 @@ export default function initGame(k: KAPLAYCtx) {
                 clicked = k.get('joystick', { recursive: true })[0];
                 clicked.z = 10; // Bring the clicked joystick to the front
             })
-
-            k.onMouseRelease("left", () => {
-                if (clicked) {
-                    clicked = null;
-                }
-            });
         }
 
         drawBuyer(k, k.vec2(300, 100), CropType.CABBAGE);
@@ -373,14 +313,20 @@ export default function initGame(k: KAPLAYCtx) {
 
         k.onMouseRelease("left", () => {
             if (clicked) {
-                if (clicked.pos.x < 0 || clicked.pos.x >  GRID_SIZE * MAP_SIZE 
-                    || clicked.pos.y < 0 || clicked.pos.y > GRID_SIZE * MAP_SIZE) {
-                    // If the clicked crop is outside the game area, reset its position
-                    clicked.pos = oldPos;
-                } else {
-                    handleCropMove(k, clicked, oldPos);
+                switch (clicked.tags[1]) {
+                    case 'joystick':
+                        clicked.pos = k.vec2(0, 0); // Reset joystick position
+                        break
+                    case 'crop':
+                        if (clicked.pos.x < 0 || clicked.pos.x >  GRID_SIZE * MAP_SIZE 
+                        || clicked.pos.y < 0 || clicked.pos.y > GRID_SIZE * MAP_SIZE) {
+                        // If the clicked crop is outside the game area, reset its position
+                        clicked.pos = oldPos;
+                    } else {
+                        handleCropMove(k, clicked, oldPos);
+                    }
+                    clicked.z = 1; // Reset z-index
                 }
-                clicked.z = 1; // Reset z-index
                 clicked = null;
             }
             k.setCamPos(k.getCamPos())
