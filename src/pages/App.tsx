@@ -10,7 +10,7 @@ function App() {
 
     const [user, setUser] = useState({ id: "", username: "", loggedIn: false });
     useEffect(() => {
-		fetch(`${process.env.VITE_SERVER_URL}/api/user`, { 
+		fetch(`${import.meta.env.VITE_SERVER_URL}/api/user`, { 
 			method: 'GET',
 			mode: 'cors',
 			credentials: 'include',
@@ -78,7 +78,7 @@ function App() {
     }
 
     function handleRedirect() {
-        window.location.href = process.env.VITE_CLIENT_URL;
+        window.location.href = import.meta.env.VITE_CLIENT_URL;
     }
 
     function gameUI() {

@@ -34,7 +34,7 @@ export default function Signup() {
         <div className='background'>
             <h1>Sign up</h1>
             {errorBox()}
-            <form action={`${process.env.VITE_SERVER_URL}/api/signup`} method="post">
+            <form action={`${import.meta.env.VITE_SERVER_URL}/api/signup`} method="post">
                 <section>
                     <label htmlFor="username">Username:
                         <input id="username" name="username" type="text" autoComplete="username" required />
