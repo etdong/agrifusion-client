@@ -7,7 +7,7 @@ export default function Title() {
     const r = document.getElementById('root') as HTMLCanvasElement;
     r.style.pointerEvents = 'all';
 
-    fetch(`${import.meta.env.VITE_SERVER_URL}/api/user`, { 
+    fetch(`${process.env.VITE_SERVER_URL}/api/user`, { 
         method: 'GET',
         mode: 'cors',
         credentials: 'include',
@@ -40,7 +40,7 @@ export default function Title() {
     }
 
     function handleSignUp() {
-        window.location.href = `${import.meta.env.VITE_CLIENT_URL}/#/signup`
+        window.location.href = `${process.env.VITE_CLIENT_URL}/#/signup`
     }
 
     return (
@@ -48,7 +48,7 @@ export default function Title() {
             <div id='title'>
                 Agrifusion
             </div>
-            <form action={`${import.meta.env.VITE_SERVER_URL}/api/login`} method="post">
+            <form action={`${process.env.VITE_SERVER_URL}/api/login`} method="post">
                 {errorBox()}
                 <div id='login-form'>
                     <section>
