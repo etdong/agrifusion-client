@@ -221,6 +221,14 @@ export default function initGame(k: KAPLAYCtx) {
             if (player) handleFarmPlacement(k, player);
         })
 
+        k.onKeyPress('e', () => {
+            socket.emit('POST game/crop/spawn', (response: { status: string, data: Crop }) => {
+                if (response.status === 'ok') {
+                    console.debug(`Crop spawned ${response.data}`);
+                }
+            })
+        })
+
         const btnContainer = k.add([
             k.rect(40, 40),
             k.outline(2, k.rgb(0, 0, 0)),
